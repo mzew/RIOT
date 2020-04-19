@@ -71,7 +71,7 @@ static inline uint64_t xtimer_now_usec64(void)
 static inline void xtimer_sleep(uint32_t seconds)
 {
     /* TODO: use ZTIMER_SEC */
-    ztimer_sleep(ZTIMER_USEC, seconds * 1000000LU);
+    ztimer_sleep(ZTIMER_MSEC, seconds * 1000LU);
 }
 
 static inline void xtimer_usleep(uint32_t microseconds)
