@@ -40,11 +40,17 @@
 #define ISR_REG     ISR
 #define ISR_TXE     USART_ISR_TXE
 #define ISR_TC      USART_ISR_TC
+#define ISR_RXNE    USART_ISR_RXNE
+#define ISR_ORE     USART_ISR_ORE
+#define ISR_IDLE    USART_ISR_IDLE
 #define TDR_REG     TDR
 #else
 #define ISR_REG     SR
 #define ISR_TXE     USART_SR_TXE
 #define ISR_TC      USART_SR_TC
+#define ISR_RXNE    USART_SR_RXNE
+#define ISR_ORE     USART_SR_ORE
+#define ISR_IDLE    USART_SR_IDLE
 #define TDR_REG     DR
 #endif
 
@@ -401,34 +407,16 @@ void uart_poweroff(uart_t uart)
 
 static inline void irq_handler(uart_t uart)
 {
-#if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
-    defined(CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L4) || \
-    defined(CPU_FAM_STM32F7) || defined(CPU_FAM_STM32WB)
+    uint32_t status = dev(uart)->ISR_REG;
 
-    uint32_t status = dev(uart)->ISR;
-
-    if (status & USART_ISR_RXNE) {
+    if (status & ISR_RXNE) {
         isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
-                            (uint8_t)dev(uart)->RDR & isr_ctx[uart].data_mask);
+                            (uint8_t)dev(uart)->TDR_REG & isr_ctx[uart].data_mask);
     }
-    if (status & USART_ISR_ORE) {
-        dev(uart)->ICR |= USART_ICR_ORECF;    /* simply clear flag on overrun */
-    }
-
-#else
-
-    uint32_t status = dev(uart)->SR;
-
-    if (status & USART_SR_RXNE) {
-        isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
-                            (uint8_t)dev(uart)->DR & isr_ctx[uart].data_mask);
-    }
-    if (status & USART_SR_ORE) {
+    if (status & ISR_ORE) {
         /* ORE is cleared by reading SR and DR sequentially */
-        dev(uart)->DR;
+        dev(uart)->TDR_REG;
     }
-
-#endif
 
     cortexm_isr_end();
 }
