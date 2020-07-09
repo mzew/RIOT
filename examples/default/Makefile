@@ -33,6 +33,7 @@ USEMODULE += shell_commands
 USEMODULE += ps
 # include and auto-initialize all available sensors
 USEMODULE += saul_default
+USEMODULE += periph_dma
 
 BOARD_PROVIDES_NETIF := acd52832 adafruit-clue airfy-beacon atmega256rfr2-xpro \
         arduino-nano-33-ble avr-rss2 b-l072z-lrwan1 cc2538dk fox \

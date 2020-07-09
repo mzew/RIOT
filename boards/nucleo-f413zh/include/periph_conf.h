@@ -42,6 +42,7 @@ static const dma_conf_t dma_config[] = {
     { .stream = 6  },
     { .stream = 10 },
     { .stream = 8  },
+    { .stream = 1  },
 };
 
 #define DMA_0_ISR  isr_dma1_stream4
@@ -49,6 +50,7 @@ static const dma_conf_t dma_config[] = {
 #define DMA_2_ISR  isr_dma1_stream6
 #define DMA_3_ISR  isr_dma2_stream2
 #define DMA_4_ISR  isr_dma2_stream0
+#define DMA_5_ISR  isr_dma1_stream1
 
 #define DMA_NUMOF           ARRAY_SIZE(dma_config)
 #endif
@@ -71,6 +73,8 @@ static const uart_conf_t uart_config[] = {
 #ifdef MODULE_PERIPH_DMA
         .dma        = 0,
         .dma_chan   = 7,
+        .dma_rx     = 5,
+        .dma_rx_chan = 4,
 #endif
     },
     {
