@@ -387,6 +387,7 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
                  (mode & 3) << DMA_SxCR_DIR_Pos;
     /* Enable interrupts */
     stream->CR |= DMA_SxCR_TCIE | DMA_SxCR_TEIE;
+    stream->CONTROL_REG |= (flags & DMA_CIRCULAR ? 1 : 0) << DMA_SxCR_CIRC_Pos;
     /* Configure FIFO */
     stream->FCR = 0;
 #else
@@ -408,6 +409,11 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
     dma_isr_enable(stream_n);
 
     return 0;
+}
+
+unsigned dma_get_remaining(dma_t dma)
+{
+    return dma_stream(dma)->NDTR_REG;
 }
 
 void dma_start(dma_t dma)

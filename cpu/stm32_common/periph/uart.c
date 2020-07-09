@@ -33,6 +33,7 @@
 #include "periph/uart.h"
 #include "periph/gpio.h"
 #include "pm_layered.h"
+#include "isrpipe.h"
 
 #if defined(CPU_FAM_STM32F0) || defined(CPU_FAM_STM32L0) || \
     defined(CPU_FAM_STM32F3) || defined(CPU_FAM_STM32L4) || \
@@ -55,6 +56,7 @@
 #endif
 
 #define RXENABLE            (USART_CR1_RE | USART_CR1_RXNEIE)
+#define RXENABLE_DMA        (USART_CR1_RE | USART_CR1_IDLEIE)
 
 /**
  * @brief   Allocate memory to store the callback functions
@@ -188,7 +190,18 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
     /* enable RX interrupt if applicable */
     if (rx_cb) {
         NVIC_EnableIRQ(uart_config[uart].irqn);
+
+#ifdef MODULE_PERIPH_DMA
+        dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE | RXENABLE_DMA);
+        dma_acquire(uart_config[uart].dma_rx);
+        dev(uart)->CR3 |= USART_CR3_DMAR;
+        tsrb_t *rb = &((isrpipe_t*)arg)->tsrb;
+        dma_configure(uart_config[uart].dma_rx, uart_config[uart].dma_rx_chan,
+                      &(dev(uart)->DR), rb->buf, rb->size, DMA_PERIPH_TO_MEM, DMA_INC_DST_ADDR | DMA_CIRCULAR);
+        dma_start(uart_config[uart].dma_rx);
+#else
         dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE | RXENABLE);
+#endif
     }
     else {
         dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE);
@@ -409,10 +422,22 @@ static inline void irq_handler(uart_t uart)
 {
     uint32_t status = dev(uart)->ISR_REG;
 
+#ifdef MODULE_PERIPH_DMA
+    if (status & ISR_IDLE) {
+        dev(uart)->TDR_REG; // clear IDLE flag
+        // find out how far the DMA has been advanced
+        unsigned raw_remain = dma_get_remaining(dma_config[uart_config[uart].dma_rx].stream);
+        tsrb_t *rb = &((isrpipe_t*)isr_ctx[uart].arg)->tsrb;
+        unsigned buf_pos =  (rb->size - raw_remain) & (rb->size - 1);
+        uint32_t len = (buf_pos - rb->writes % rb->size + rb->size) % rb->size; //calculate how far the DMA write pointer has moved
+        isrpipe_advance((isrpipe_t*)isr_ctx[uart].arg, len);
+    }
+#else
     if (status & ISR_RXNE) {
         isr_ctx[uart].rx_cb(isr_ctx[uart].arg,
                             (uint8_t)dev(uart)->TDR_REG & isr_ctx[uart].data_mask);
     }
+#endif
     if (status & ISR_ORE) {
         /* ORE is cleared by reading SR and DR sequentially */
         dev(uart)->TDR_REG;

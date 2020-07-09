@@ -37,6 +37,13 @@ int isrpipe_write_one(isrpipe_t *isrpipe, uint8_t c)
     return res;
 }
 
+int isrpipe_advance(isrpipe_t *isrpipe, unsigned count)
+{
+    isrpipe->tsrb.writes += count;
+    mutex_unlock(&isrpipe->mutex);
+    return count;
+}
+
 int isrpipe_read(isrpipe_t *isrpipe, uint8_t *buffer, size_t count)
 {
     int res;

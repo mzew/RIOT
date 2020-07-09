@@ -329,6 +329,12 @@ typedef enum {
 #define DMA_DATA_WIDTH_MASK      (0x0C)
 #define DMA_DATA_WIDTH_SHIFT     (2)
 /** @} */
+
+/**
+ * DMA circular flag
+ */
+#define DMA_CIRCULAR      (0x01 << 4)
+
 #endif /* MODULE_PERIPH_DMA */
 
 /**
@@ -482,6 +488,8 @@ typedef struct {
 #ifdef MODULE_PERIPH_DMA
     dma_t dma;              /**< Logical DMA stream used for TX */
     uint8_t dma_chan;       /**< DMA channel used for TX */
+    dma_t dma_rx;
+    uint8_t dma_rx_chan;
 #endif
 } uart_conf_t;
 
@@ -784,6 +792,14 @@ void dma_wait(dma_t dma);
  */
 int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *dst, size_t len,
                   dma_mode_t mode, uint8_t flags);
+
+/**
+ * @brief Get remaining ammount of data to be transferred
+ * @param dma   logical DMA stream
+ *
+ * @return  remaining ammount of data
+ */
+unsigned dma_get_remaining(dma_t dma);
 
 #endif /* MODULE_PERIPH_DMA */
 
