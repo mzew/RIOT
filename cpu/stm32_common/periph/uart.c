@@ -193,6 +193,8 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
 
 #ifdef MODULE_PERIPH_DMA
         dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE | RXENABLE_DMA);
+        dma_stop(uart_config[uart].dma_rx);
+        dma_release(uart_config[uart].dma_rx);
         dma_acquire(uart_config[uart].dma_rx);
         dev(uart)->CR3 |= USART_CR3_DMAR;
         tsrb_t *rb = &((isrpipe_t*)arg)->tsrb;
