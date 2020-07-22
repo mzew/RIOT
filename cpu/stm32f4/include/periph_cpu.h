@@ -84,6 +84,13 @@ typedef struct {
     uint8_t chan;           /**< CPU ADC channel connected to the pin */
 } adc_conf_t;
 
+#ifdef MODULE_PERIPH_DMA
+typedef struct {
+    dma_t dma;
+    uint8_t dma_chan;
+} adc_dma_conf_t;
+#endif
+
 #ifdef __cplusplus
 }
 #endif

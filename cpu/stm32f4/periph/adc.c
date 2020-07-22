@@ -120,3 +120,53 @@ int32_t adc_sample(adc_t line, adc_res_t res)
 
     return sample;
 }
+
+#ifdef MODULE_PERIPH_DMA
+void adc_sample_all(adc_res_t res, uint16_t* data, size_t len) {
+    assert(len >= ADC_NUMOF);
+
+    // assume all lines belong to the same device
+    // configure ADC sequence based on order of lines' definition
+    adc_t line = ADC_LINE(0);
+    prep(line);
+    dev(line)->CR1 = res;
+    dev(line)->SQR1 = 0; // is manual reset needed?
+    dev(line)->SQR2 = 0;
+    dev(line)->SQR3 = 0;
+    for (unsigned i = 0; i < ADC_NUMOF; ++i) {
+        if (i < 6 ) {
+            // SQR3
+            dev(line)->SQR3 |= adc_config[i].chan << 5*i;
+        } else
+        if (i >= 6 && i < 12) {
+            // SQR2
+            dev(line)->SQR2 |= adc_config[i].chan << 5*(i-6);
+        } else
+        if (i >= 12 && i < 16) {
+            //SQR1
+            dev(line)->SQR1 |= adc_config[i].chan << 5*(i-12);
+        }
+    }
+    // write ADC_NUMOF to SQR1
+    dev(line)->SQR1 |= ADC_NUMOF << ADC_SQR1_L_Pos;
+    // initiate DMA transfer
+    dma_acquire(adc_dma_config[0].dma);
+    dev(line)->CR2 |= ADC_CR2_DMA;
+    dev(line)->CR1 |= ADC_CR1_SCAN;
+    int ret = dma_configure(adc_dma_config[0].dma, adc_dma_config[0].dma_chan,
+            &dev(line)->DR, data, len,
+            DMA_PERIPH_TO_MEM, DMA_INC_DST_ADDR | DMA_DATA_WIDTH_HALF_WORD);
+    (void)ret;
+    dma_start(adc_dma_config[0].dma);
+    dev(line)->CR2 |= ADC_CR2_SWSTART;
+    dma_wait(adc_dma_config[0].dma);
+    dma_stop(adc_dma_config[0].dma);
+
+    dev(line)->CR1 &= ~ADC_CR1_SCAN;
+    dev(line)->CR2 &= ~ADC_CR2_DMA;
+    dma_release(adc_dma_config[0].dma);
+
+    // de-init
+    done(line);
+}
+#endif

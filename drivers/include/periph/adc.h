@@ -128,6 +128,16 @@ int adc_init(adc_t line);
  */
 int32_t adc_sample(adc_t line, adc_res_t res);
 
+#ifdef MODULE_PERIPH_DMA
+/**
+ * @brief Sample values from all ADC lines
+ * @param[in] res           resolution to use for conversion
+ * @param[out] data         place to store results
+ * @param[in] length        lenght of data array
+ */
+void adc_sample_all(adc_res_t res, uint16_t* data, size_t length);
+#endif
+
 #ifdef __cplusplus
 }
 #endif
