@@ -154,7 +154,7 @@ void adc_sample_all(adc_res_t res, uint16_t* data, size_t len) {
     dev(line)->CR2 |= ADC_CR2_DMA;
     dev(line)->CR1 |= ADC_CR1_SCAN;
     int ret = dma_configure(adc_dma_config[0].dma, adc_dma_config[0].dma_chan,
-            &dev(line)->DR, data, len,
+            &dev(line)->DR, data, len + 1,
             DMA_PERIPH_TO_MEM, DMA_INC_DST_ADDR | DMA_DATA_WIDTH_HALF_WORD);
     (void)ret;
     dma_start(adc_dma_config[0].dma);
