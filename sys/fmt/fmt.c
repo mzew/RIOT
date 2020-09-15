@@ -383,7 +383,7 @@ size_t fmt_float(char *out, float f, unsigned precision)
     }
 
     size_t res = fmt_u32_dec(out, integer);
-    if (precision && fraction) {
+    if (precision/* && fraction*/) {
         if (out) {
             out += res;
             *out++ = '.';
