@@ -399,6 +399,20 @@ typedef struct {
 } qdec_conf_t;
 
 /**
+ * @brief Pulse Counter configuration
+ */
+typedef struct {
+    TIM_TypeDef *dev;
+    uint32_t max;                   /**< Maximum counter value */
+    uint32_t rcc_mask;              /**< bit in clock enable register */
+    qdec_chan_t chan[TIMER_CHAN];    /**< channel mapping, set to {GPIO_UNDEF, 0}
+                                     *   if not used */
+    gpio_af_t af;                   /**< alternate function used */
+    uint8_t bus;                    /**< APB bus */
+    uint8_t irqn;
+} plscnt_conf_t;
+
+/**
  * @brief UART hardware module types
  */
 typedef enum {
