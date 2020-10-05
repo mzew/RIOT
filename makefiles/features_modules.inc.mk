@@ -44,6 +44,7 @@ PERIPH_IGNORE_MODULES := \
   periph_mcg_lite \
   periph_nvm \
   periph_plic \
+  periph_plscnt \
   periph_rtc_ms \
   periph_rtc_rtt \
   periph_rtt_hw_rtc \
