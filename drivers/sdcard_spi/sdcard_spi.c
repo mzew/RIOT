@@ -125,12 +125,13 @@ static sd_init_fsm_state_t _init_sd_fsm_step(sdcard_spi_t *card, sd_init_fsm_sta
             gpio_clear(card->params.mosi);
 
             /* use soft-spi to perform init command to allow use of internal pull-ups on miso */
-            _dyn_spi_rxtx_byte = &_sw_spi_rxtx_byte;
+            _dyn_spi_rxtx_byte = &_hw_spi_rxtx_byte;
 
             /* select sdcard for cmd0 */
-            gpio_clear(card->params.cs);
+            spi_init_pins(card->params.spi_dev);
+            _select_card_spi(card);
             uint8_t cmd0_r1 = sdcard_spi_send_cmd(card, SD_CMD_0, SD_CMD_NO_ARG, INIT_CMD0_RETRY_CNT);
-            gpio_set(card->params.cs);
+            _unselect_card_spi(card);
 
             if (R1_VALID(cmd0_r1) && !R1_ERROR(cmd0_r1) && R1_IDLE_BIT_SET(cmd0_r1)) {
                 DEBUG("CMD0: [OK]\n");
