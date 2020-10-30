@@ -128,7 +128,7 @@ extern "C" {
 /* the retry counters below are used as timeouts for specific actions.
    The values may need some adjustments to either give the card more time to respond
    to commands or to achieve a lower delay / avoid infinite blocking. */
-#define R1_POLLING_RETRY_CNT       1000000
+#define R1_POLLING_RETRY_CNT       10
 #define SD_DATA_TOKEN_RETRY_CNT    1000000
 #define INIT_CMD_RETRY_CNT         1000000
 #define INIT_CMD0_RETRY_CNT        3
