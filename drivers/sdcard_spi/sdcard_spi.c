@@ -109,14 +109,15 @@ static sd_init_fsm_state_t _init_sd_fsm_step(sdcard_spi_t *card, sd_init_fsm_sta
             gpio_set(card->params.mosi);
             gpio_set(card->params.cs);   /* unselect sdcard for power up sequence */
 
-            /* powersequence: perform at least 74 clockcycles with mosi_pin being high
-             * (same as sending dummy bytes with 0xFF) */
-            for (int i = 0; i < SD_POWERSEQUENCE_CLOCK_COUNT; i += 1) {
-                gpio_set(card->params.clk);
-                xtimer_usleep(SD_CARD_PREINIT_CLOCK_PERIOD_US/2);
-                gpio_clear(card->params.clk);
-                xtimer_usleep(SD_CARD_PREINIT_CLOCK_PERIOD_US/2);
-            }
+            gpio_init(card->params.miso, GPIO_IN_PU);
+            spi_init_pins(card->params.spi_dev);
+            spi_acquire(card->params.spi_dev, GPIO_UNDEF,
+                        SD_CARD_SPI_MODE, card->spi_clk);
+            uint8_t pwr_seq[10] = {0xff};
+            spi_transfer_bytes(card->params.spi_dev, GPIO_UNDEF, false,
+                               pwr_seq,  0, sizeof(pwr_seq));
+            spi_release(card->params.spi_dev);
+
             return SD_INIT_SEND_CMD0;
 
         case SD_INIT_SEND_CMD0:
