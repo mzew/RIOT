@@ -124,6 +124,26 @@ typedef struct {
 } plscnt_conf_t;
 
 /**
+ * @brief SDIO peripheral configuration
+ */
+typedef struct {
+    SDIO_TypeDef* dev;
+    gpio_t cmd_pin;
+    gpio_t ck_pin;
+    gpio_t d0_pin;
+    gpio_t d1_pin;
+    gpio_t d2_pin;
+    gpio_t d3_pin;
+    gpio_af_t pins_af;
+    uint32_t rccmask;       /**< bit in the RCC peripheral enable register */
+    uint8_t apbbus;         /**< APBx bus the device is connected to */
+#ifdef MODULE_PERIPH_DMA
+    dma_t dma;              /**< Logical DMA stream used for SDIO */
+    uint8_t dma_chan;       /**< DMA channel used for SDIO */
+#endif
+} sdio_conf_t;
+
+/**
  * @name    PTP clock configuration
  * @{
  */
