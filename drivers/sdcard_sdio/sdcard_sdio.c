@@ -24,5 +24,7 @@
 
 int sdcard_sdio_init(sdcard_sdio_t *dev, const sdcard_sdio_params_t *params)
 {
-
+    (void)dev;
+    (void)params;
+    return 0;
 }
