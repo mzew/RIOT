@@ -1,2 +1,2 @@
-USEMODULE_INCLUDES_sdcard_sdio := $(LAST_MAKEFILEDIR)/include
+USEMODULE_INCLUDES_sdcard_sdio := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))/include
 USEMODULE_INCLUDES += $(USEMODULE_INCLUDES_sdcard_sdio)
