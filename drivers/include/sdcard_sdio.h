@@ -41,6 +41,7 @@ typedef struct {
 
 // SD card description
 typedef struct {
+    sdio_t      bus;
     uint8_t     Type;            // Card type (detected by SD_Init())
     uint32_t    Capacity;        // Card capacity (MBytes for SDHC/SDXC, bytes otherwise)
     uint32_t    BlockCount;      // SD card blocks count
@@ -74,11 +75,11 @@ typedef SDCard_TypeDef sdcard_sdio_t;
  */
 int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus);
 
-int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_t bus, sdio_width_t w);
+int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_width_t w);
 
-int sdcard_sdio_read(sdcard_sdio_t *dev, sdio_t bus, uint32_t addr, uint32_t* data, uint32_t len);
+int sdcard_sdio_read(sdcard_sdio_t *dev, uint32_t addr, uint32_t* data, uint32_t len);
 
-int sdcard_sdio_write(sdcard_sdio_t *dev, sdio_t bus, uint32_t addr, uint32_t* data, uint32_t len);
+int sdcard_sdio_write(sdcard_sdio_t *dev, uint32_t addr, uint32_t* data, uint32_t len);
 
 #ifdef __cplusplus
 }
