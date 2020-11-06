@@ -1,0 +1,2 @@
+USEMODULE += sdcard_sdio
+FEATURES_REQUIRED += periph_sdio
