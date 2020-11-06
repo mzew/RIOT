@@ -21,38 +21,39 @@
 #ifndef MTD_SDCARD_SDIO_H
 #define MTD_SDCARD_SDIO_H
 
-/* Add header includes here */
+#include "sdcard_sdio.h"
+#include "mtd.h"
+
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Declare the API of the driver */
-
-/**
- * @brief   Device initialization parameters
- */
-typedef struct {
-    /* add initialization params here */
-} mtd_sdcard_sdio_params_t;
 
 /**
  * @brief   Device descriptor for the driver
  */
 typedef struct {
-    /** Device initialization parameters */
-    mtd_sdcard_sdio_params_t params;
+    mtd_dev_t base;
+    sdcard_sdio_t *card;
+    bool init_done;
 } mtd_sdcard_sdio_t;
 
 /**
- * @brief   Initialize the given device
- *
- * @param[inout] dev        Device descriptor of the driver
- * @param[in]    params     Initialization parameters
- *
- * @return                  0 on success
+ * @brief   sdcards handle sector erase internally so it's possible to directly
+ *          write to the card without erasing the sector first.
+ *          Attention: an erase call will therefore NOT touch the content,
+ *                     so disable this feature to ensure overriding the data.
  */
-int mtd_sdcard_sdio_init(mtd_sdcard_sdio_t *dev, const mtd_sdcard_sdio_params_t *params);
+#ifndef MTD_SDCARD_SKIP_ERASE
+#define MTD_SDCARD_SKIP_ERASE (1)
+#endif
+
+/**
+ * @brief   sdcard device operations table for mtd
+ */
+extern const mtd_desc_t mtd_sdcard_sdio_driver;
 
 #ifdef __cplusplus
 }
