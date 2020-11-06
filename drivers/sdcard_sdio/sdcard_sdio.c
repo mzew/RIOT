@@ -94,21 +94,22 @@ static void _sdcard_sdio_parse(sdcard_sdio_t* card) {
 
 int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
 {
-    sdio_init(bus);
+    dev->bus = bus;
+    sdio_init(dev->bus);
 
     SDResult cmd_res;
 
     // Populate SDCard structure with default values
     *dev = (SDCard_TypeDef){0};
     dev->Type = SDCT_UNKNOWN;
-    cmd_res = sdio_detect_card(bus, &dev->Type);
+    cmd_res = sdio_detect_card(dev->bus, &dev->Type);
 
     // Now the CMD2 and CMD3 commands should be issued in cycle until timeout to enumerate all cards on the bus
     // Since this module suitable to work with single card, issue this commands one time only
 
     // Send ALL_SEND_CID command
-    sdio_cmd(bus, SD_CMD_ALL_SEND_CID, 0, SD_RESP_LONG); // CMD2
-    cmd_res = sdio_wait_R2(bus, (uint32_t *)dev->CID); // response is a value of the CID/CSD register
+    sdio_cmd(dev->bus, SD_CMD_ALL_SEND_CID, 0, SD_RESP_LONG); // CMD2
+    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)dev->CID); // response is a value of the CID/CSD register
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
@@ -116,8 +117,8 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     if (dev->Type != SDCT_MMC) {
         // Send SEND_REL_ADDR command to ask the SD card to publish a new RCA (Relative Card Address)
         // Once the RCA is received the card state changes to the stand-by state
-        sdio_cmd(bus, SD_CMD_SEND_REL_ADDR, 0, SD_RESP_SHORT); // CMD3
-        cmd_res = sdio_wait_R6(bus, SD_CMD_SEND_REL_ADDR, (uint16_t *)(&dev->RCA));
+        sdio_cmd(dev->bus, SD_CMD_SEND_REL_ADDR, 0, SD_RESP_SHORT); // CMD3
+        cmd_res = sdio_wait_R6(dev->bus, SD_CMD_SEND_REL_ADDR, (uint16_t *)(&dev->RCA));
         if (cmd_res != SDR_Success) {
             return cmd_res;
         }
@@ -127,8 +128,8 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
         ////////////////////////////////////////////////////////////////
 
         // For MMC card host should set a RCA value to the card by SET_REL_ADDR command
-        sdio_cmd(bus, SD_CMD_SEND_REL_ADDR, SDIO_MMC_RCA << 16, SD_RESP_SHORT); // CMD3
-        cmd_res = sdio_wait_R1(bus, SD_CMD_SEND_REL_ADDR);
+        sdio_cmd(dev->bus, SD_CMD_SEND_REL_ADDR, SDIO_MMC_RCA << 16, SD_RESP_SHORT); // CMD3
+        cmd_res = sdio_wait_R1(dev->bus, SD_CMD_SEND_REL_ADDR);
         if (cmd_res != SDR_Success) {
             return cmd_res;
         }
@@ -136,8 +137,8 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     }
 
     // Send SEND_CSD command to retrieve CSD register from the card
-    sdio_cmd(bus, SD_CMD_SEND_CSD, dev->RCA << 16, SD_RESP_LONG); // CMD9
-    cmd_res = sdio_wait_R2(bus, (uint32_t *)dev->CSD);
+    sdio_cmd(dev->bus, SD_CMD_SEND_CSD, dev->RCA << 16, SD_RESP_LONG); // CMD9
+    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)dev->CSD);
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
@@ -146,25 +147,25 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     _sdcard_sdio_parse(dev);
 
     // Now card must be in stand-by mode, from this point it is possible to increase bus speed
-    sdio_set_bus_clock(bus, SDIO_CLK_24MHZ);
+    sdio_set_bus_clock(dev->bus, SDIO_CLK_24MHZ);
 
     // Put the SD card to the transfer mode
-    sdio_cmd(bus, SD_CMD_SEL_DESEL_CARD, dev->RCA << 16, SD_RESP_SHORT); // CMD7
-    cmd_res = sdio_wait_R1(bus, SD_CMD_SEL_DESEL_CARD); // In fact R1b response here
+    sdio_cmd(dev->bus, SD_CMD_SEL_DESEL_CARD, dev->RCA << 16, SD_RESP_SHORT); // CMD7
+    cmd_res = sdio_wait_R1(dev->bus, SD_CMD_SEL_DESEL_CARD); // In fact R1b response here
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
 
     // Disable the pull-up resistor on CD/DAT3 pin of card
     // Send leading command for ACMD<n> command
-    sdio_cmd(bus, SD_CMD_APP_CMD, dev->RCA << 16, SD_RESP_SHORT); // CMD55
-    cmd_res = sdio_wait_R1(bus, SD_CMD_APP_CMD);
+    sdio_cmd(dev->bus, SD_CMD_APP_CMD, dev->RCA << 16, SD_RESP_SHORT); // CMD55
+    cmd_res = sdio_wait_R1(dev->bus, SD_CMD_APP_CMD);
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
     // Send SET_CLR_CARD_DETECT command
-    sdio_cmd(bus, SD_CMD_SET_CLR_CARD_DETECT, 0, SD_RESP_SHORT); // ACMD42
-    cmd_res = sdio_wait_R1(bus, SD_CMD_SET_CLR_CARD_DETECT);
+    sdio_cmd(dev->bus, SD_CMD_SET_CLR_CARD_DETECT, 0, SD_RESP_SHORT); // ACMD42
+    cmd_res = sdio_wait_R1(dev->bus, SD_CMD_SET_CLR_CARD_DETECT);
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
@@ -172,8 +173,8 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     // For SDv1, SDv2 and MMC card must set block size
     // The SDHC/SDXC always have fixed block size (512 bytes)
     if ((dev->Type == SDCT_SDSC_V1) || (dev->Type == SDCT_SDSC_V2) || (dev->Type == SDCT_MMC)) {
-        sdio_cmd(bus, SD_CMD_SET_BLOCKLEN, 512, SD_RESP_SHORT); // CMD16
-        cmd_res = sdio_wait_R1(bus, SD_CMD_SET_BLOCKLEN);
+        sdio_cmd(dev->bus, SD_CMD_SET_BLOCKLEN, 512, SD_RESP_SHORT); // CMD16
+        cmd_res = sdio_wait_R1(dev->bus, SD_CMD_SET_BLOCKLEN);
         if (cmd_res != SDR_Success) {
             return SDR_SetBlockSizeFailed;
         }
@@ -182,21 +183,21 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     return SDR_Success;
 }
 
-int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_t bus, sdio_width_t w) {
+int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_width_t w) {
     SDResult cmd_res = SDR_Success;
     uint32_t clk;
     if (dev->Type != SDCT_MMC) {
         // Send leading command for ACMD<n> command
-        sdio_cmd(bus, SD_CMD_APP_CMD, dev->RCA << 16, SD_RESP_SHORT); // CMD55
-        cmd_res = sdio_wait_R1(bus, SD_CMD_APP_CMD);
+        sdio_cmd(dev->bus, SD_CMD_APP_CMD, dev->RCA << 16, SD_RESP_SHORT); // CMD55
+        cmd_res = sdio_wait_R1(dev->bus, SD_CMD_APP_CMD);
         if (cmd_res != SDR_Success) {
             return cmd_res;
         }
 
         // Send SET_BUS_WIDTH command
         clk = (w == SDIO_1bit) ? 0x00000000 : 0x00000002;
-        sdio_cmd(bus, SD_CMD_SET_BUS_WIDTH, clk, SD_RESP_SHORT); // ACMD6
-        cmd_res = sdio_wait_R1(bus, SD_CMD_SET_BUS_WIDTH);
+        sdio_cmd(dev->bus, SD_CMD_SET_BUS_WIDTH, clk, SD_RESP_SHORT); // ACMD6
+        cmd_res = sdio_wait_R1(dev->bus, SD_CMD_SET_BUS_WIDTH);
         if (cmd_res != SDR_Success) {
             return cmd_res;
         }
@@ -204,25 +205,25 @@ int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_t bus, sdio_width_t w) {
         // MMC supports only 8-bit ?
     }
 
-    return sdio_set_bus_width(bus, w);
+    return sdio_set_bus_width(dev->bus, w);
 }
 
-int sdcard_sdio_read(sdcard_sdio_t *dev, sdio_t bus, uint32_t addr, uint32_t* data, uint32_t len) {
+int sdcard_sdio_read(sdcard_sdio_t *dev, uint32_t addr, uint32_t* data, uint32_t len) {
     // SDSC card uses byte unit address and
     // SDHC/SDXC cards use block unit address (1 unit = 512 bytes)
     // For SDHC card addr must be converted to block unit address
     if (dev->Type == SDCT_SDHC) {
         addr >>= 9;
     }
-    return sdio_read_blocks(bus, addr, data, len);
+    return sdio_read_blocks(dev->bus, addr, data, len);
 }
 
-int sdcard_sdio_write(sdcard_sdio_t *dev, sdio_t bus, uint32_t addr, uint32_t* data, uint32_t len) {
+int sdcard_sdio_write(sdcard_sdio_t *dev, uint32_t addr, uint32_t* data, uint32_t len) {
     // SDSC card uses byte unit address and
     // SDHC/SDXC cards use block unit address (1 unit = 512 bytes)
     // For SDHC card addr must be converted to block unit address
     if (dev->Type == SDCT_SDHC) {
         addr >>= 9;
     }
-    return sdio_write_blocks(bus, dev->RCA, addr, data, len);
+    return sdio_write_blocks(dev->bus, dev->RCA, addr, data, len);
 }
