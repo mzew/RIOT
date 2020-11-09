@@ -5,6 +5,7 @@
 
 
 #include "periph/sdio.h"
+#include "xtimer.h"
 
 // Mask for errors in card status value
 #define SD_OCR_ALL_ERRORS             ((uint32_t)0xFDFFE008U) // All possible error bits
@@ -79,6 +80,7 @@ int sdio_detect_card(sdio_t bus, sdio_card_type_t* typ) {
     uint32_t sd_type = SD_STD_CAPACITY; // SD card capacity
     // Enable the SDIO clock
     dev(bus)->POWER = SDIO_POWER_PWRCTRL;
+    xtimer_usleep(1000);
 
     // CMD0
     wait = SD_CMD_TIMEOUT;
