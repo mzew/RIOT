@@ -96,6 +96,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
 {
     dev->bus = bus;
     sdio_init(dev->bus);
+    sdio_set_bus_clock(dev->bus, SDIO_CLK_400KHZ);
 
     SDResult cmd_res;
 
@@ -103,6 +104,8 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     *dev = (SDCard_TypeDef){0};
     dev->Type = SDCT_UNKNOWN;
     cmd_res = sdio_detect_card(dev->bus, &dev->Type);
+    if (cmd_res != SDR_Success)
+        return cmd_res;
 
     // Now the CMD2 and CMD3 commands should be issued in cycle until timeout to enumerate all cards on the bus
     // Since this module suitable to work with single card, issue this commands one time only
