@@ -19,8 +19,6 @@
  */
 
 #include "mtd_sdcard_sdio.h"
-#include "mtd_sdcard_sdio_constants.h"
-#include "mtd_sdcard_sdio_params.h"
 
 #include "periph/sdio.h"
 
@@ -46,7 +44,7 @@ static int mtd_sdcard_init(mtd_dev_t *dev)
 {
     mtd_sdcard_sdio_t* mtd_sd = (mtd_sdcard_sdio_t*)dev;
     if((mtd_sd->init_done == true) ||
-        (sdcard_sdio_init(dev, SDIO_DEV(0)) == 0)) {
+        (sdcard_sdio_init(mtd_sd->card, SDIO_DEV(0)) == 0)) {
         dev->pages_per_sector = 1;
         dev->sector_count = mtd_sd->card->BlockCount;
         dev->page_size = mtd_sd->card->BlockSize;
@@ -69,7 +67,7 @@ static int mtd_sdcard_write(mtd_dev_t *dev, const void *buff, uint32_t addr,
                             uint32_t size)
 {
     mtd_sdcard_sdio_t* mtd_sd = (mtd_sdcard_sdio_t*)dev;
-    int res = sdcard_sdio_write(mtd_sd->card, addr, buff, size);
+    int res = sdcard_sdio_write(mtd_sd->card, addr, (uint32_t*)buff, size);
     if (res == 0)
         return size;
     return -EIO;

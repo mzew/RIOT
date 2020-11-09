@@ -69,6 +69,7 @@ static void sdio_init_pins(sdio_t bus)  {
 void sdio_init(sdio_t bus) {
     sdio_init_pins(bus);
     periph_clk_en(sdio_config[bus].apbbus, sdio_config[bus].rccmask);
+    dev(bus)->CLKCR = SDIO_CLKCR_CLKEN | SDIO_CLKCR_HWFC_EN;
 }
 
 int sdio_detect_card(sdio_t bus, sdio_card_type_t* typ) {
@@ -116,7 +117,7 @@ int sdio_detect_card(sdio_t bus, sdio_card_type_t* typ) {
             // Set 3.0-3.3V voltage window (bit 20)
             // Set HCS bit (30) (Host Capacity Support) to inform card what host support high capacity
             // Set XPC bit (28) (SDXC Power Control) to use maximum performance (SDXC only)
-            sdio_cmd(bus, SD_CMD_SEND_OP_COND, SD_OCR_VOLTAGE | sd_type, SD_RESP_SHORT);
+            sdio_cmd(bus, SD_CMD_SD_SEND_OP_COND, SD_OCR_VOLTAGE | sd_type, SD_RESP_SHORT);
             cmd_res = sdio_wait_R3(bus);
             if (cmd_res != SDR_Success) {
                 return cmd_res;
