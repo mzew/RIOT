@@ -388,6 +388,7 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
     /* Enable interrupts */
     stream->CR |= DMA_SxCR_TCIE | DMA_SxCR_TEIE;
     stream->CONTROL_REG |= (flags & DMA_CIRCULAR ? 1 : 0) << DMA_SxCR_CIRC_Pos;
+    stream->CONTROL_REG |= (flags & DMA_PFCTRL ? 1 : 0) << DMA_SxCR_PFCTRL_Pos;
     /* Configure FIFO */
     stream->FCR = 0;
 #else
