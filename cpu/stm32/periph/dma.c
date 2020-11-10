@@ -525,6 +525,7 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
 
 #if CPU_FAM_STM32F2 || CPU_FAM_STM32F4 || CPU_FAM_STM32F7
     dma_ctx[dma].stream->CONTROL_REG |= (flags & DMA_CIRCULAR ? 1 : 0) << DMA_SxCR_CIRC_Pos;
+    dma_ctx[dma].stream->CONTROL_REG |= (flags & DMA_PFCTRL ? 1 : 0) << DMA_SxCR_PFCTRL_Pos;
 #endif
 
     dma_prepare(dma, mem_addr, len, inc_mem);
