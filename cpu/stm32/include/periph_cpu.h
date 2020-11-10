@@ -489,6 +489,7 @@ typedef enum {
  * DMA circular flag
  */
 #define DMA_CIRCULAR      (0x01 << 4)
+#define DMA_PFCTRL        (1 << 5)
 
 /**
  * @brief   Available number of ADC devices
