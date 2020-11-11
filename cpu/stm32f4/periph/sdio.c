@@ -436,6 +436,14 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
     // Clear the static SDIO flags
     dev(bus)->ICR = SDIO_ICR_STATIC;
 
+    dma_acquire(sdio_config[bus].dma);
+    int dma_ret = dma_configure(sdio_config[bus].dma, sdio_config[bus].dma_chan, &dev(bus)->FIFO, pBuf, length >> 2,
+                               DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL);
+    if (dma_ret)  {
+        __BKPT();
+    }
+    dma_start(sdio_config[bus].dma);
+
     if (blk_count > 1) {
         // Prepare bit checking variable for multiple block transfer
         STA_mask = SDIO_RX_MB_FLAGS;
@@ -484,12 +492,11 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
     } while (!(STA & STA_mask));
     // <---- TIME CRITICAL SECTION END ---->
 #else
-    dma_acquire(sdio_config[bus].dma);
+
     dev(bus)->DCTRL  = SDIO_DCTRL_DTDIR | (9 << 4) | SDIO_DCTRL_DTEN | SDIO_DCTRL_DMAEN;
-    if ((int)length != dma_transfer(sdio_config[bus].dma, sdio_config[bus].dma_chan, &dev(bus)->FIFO, pBuf, length,
-            DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL)) {
-        __BKPT();
-    }
+    dma_wait(sdio_config[bus].dma);
+    xtimer_usleep(50);
+    dma_stop(sdio_config[bus].dma);
     STA = dev(bus)->STA & STA_mask;
     dma_release(sdio_config[bus].dma);
 #endif
