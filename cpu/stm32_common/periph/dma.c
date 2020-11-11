@@ -389,8 +389,13 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
     stream->CR |= DMA_SxCR_TCIE | DMA_SxCR_TEIE;
     stream->CONTROL_REG |= (flags & DMA_CIRCULAR ? 1 : 0) << DMA_SxCR_CIRC_Pos;
     stream->CONTROL_REG |= (flags & DMA_PFCTRL ? 1 : 0) << DMA_SxCR_PFCTRL_Pos;
+    if (flags & DMA_BURST) {
+        stream->CONTROL_REG |= DMA_SxCR_MBURST_0 | DMA_SxCR_PBURST_0;
+        stream->FCR |= DMA_SxFCR_DMDIS | DMA_SxFCR_FTH_0 | DMA_SxFCR_FTH_1;
+    } else {
     /* Configure FIFO */
     stream->FCR = 0;
+    }
 #else
 #if defined(DMA_CSELR_C1S) || defined(DMA1_CSELR_DEFAULT)
     dma_req(stream_n)->CSELR &= ~((0xF) << ((stream_n & 0x7) << 2));

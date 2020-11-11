@@ -335,6 +335,7 @@ typedef enum {
  */
 #define DMA_CIRCULAR      (0x01 << 4)
 #define DMA_PFCTRL        (1 << 5)
+#define DMA_BURST         (1 << 6)
 
 #endif /* MODULE_PERIPH_DMA */
 

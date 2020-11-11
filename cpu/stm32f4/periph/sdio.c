@@ -438,7 +438,7 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
 
     dma_acquire(sdio_config[bus].dma);
     int dma_ret = dma_configure(sdio_config[bus].dma, sdio_config[bus].dma_chan, &dev(bus)->FIFO, pBuf, length >> 2,
-                               DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL);
+                               DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL | DMA_BURST);
     if (dma_ret)  {
         __BKPT();
     }
