@@ -436,13 +436,15 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
     // Clear the static SDIO flags
     dev(bus)->ICR = SDIO_ICR_STATIC;
 
+#ifdef MODULE_PERIPH_DMA
     dma_acquire(sdio_config[bus].dma);
-    int dma_ret = dma_configure(sdio_config[bus].dma, sdio_config[bus].dma_chan, &dev(bus)->FIFO, pBuf, length >> 2,
-                               DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL | DMA_BURST);
-    if (dma_ret)  {
-        __BKPT();
+    if (0 != dma_configure(sdio_config[bus].dma, sdio_config[bus].dma_chan, &dev(bus)->FIFO, pBuf, length >> 2,
+            DMA_PERIPH_TO_MEM, DMA_DATA_WIDTH_WORD | DMA_INC_DST_ADDR | DMA_PFCTRL | DMA_BURST)) {
+        dma_release(sdio_config[bus].dma);
+        return SDR_DMAError;
     }
     dma_start(sdio_config[bus].dma);
+#endif
 
     if (blk_count > 1) {
         // Prepare bit checking variable for multiple block transfer
@@ -471,7 +473,7 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
     //   DMA: disabled
     //   block size: 2^9 = 512 bytes
     //   DPSM: enabled
-#if 0//ndef MODULE_PERIPH_DMA
+#ifndef MODULE_PERIPH_DMA
     dev(bus)->DCTRL  = SDIO_DCTRL_DTDIR | (9 << 4) | SDIO_DCTRL_DTEN;
 
     // Receive a data block from the SDIO
@@ -492,10 +494,8 @@ int sdio_read_blocks(sdio_t bus, uint32_t addr, uint32_t *pBuf, uint32_t length)
     } while (!(STA & STA_mask));
     // <---- TIME CRITICAL SECTION END ---->
 #else
-
     dev(bus)->DCTRL  = SDIO_DCTRL_DTDIR | (9 << 4) | SDIO_DCTRL_DTEN | SDIO_DCTRL_DMAEN;
     dma_wait(sdio_config[bus].dma);
-    xtimer_usleep(50);
     dma_stop(sdio_config[bus].dma);
     STA = dev(bus)->STA & STA_mask;
     dma_release(sdio_config[bus].dma);
@@ -553,6 +553,16 @@ int sdio_write_blocks(sdio_t bus, uint16_t rca, uint32_t addr, uint32_t *pBuf, u
     // Initialize the data control register
     dev(bus)->DCTRL = 0;
 
+#ifdef MODULE_PERIPH_DMA
+    dma_acquire(sdio_config[bus].dma);
+    if (0 != dma_configure(sdio_config[bus].dma, sdio_config[bus].dma_chan, pBuf, &dev(bus)->FIFO, length >> 2,
+            DMA_MEM_TO_PERIPH, DMA_DATA_WIDTH_WORD | DMA_INC_SRC_ADDR | DMA_PFCTRL | DMA_BURST)) {
+        dma_release(sdio_config[bus].dma);
+        return SDR_DMAError;
+    }
+    dma_start(sdio_config[bus].dma);
+#endif
+
     if (blk_count > 1) {
         // Prepare bit checking variable for multiple block transfer
         STA_mask = SDIO_TX_MB_FLAGS;
@@ -577,6 +587,7 @@ int sdio_write_blocks(sdio_t bus, uint16_t rca, uint32_t addr, uint32_t *pBuf, u
     dev(bus)->DTIMER = SD_DATA_W_TIMEOUT;
     // Data length
     dev(bus)->DLEN = length;
+#ifndef MODULE_PERIPH_DMA
     // Data transfer:
     //   transfer mode: block
     //   direction: to card
@@ -632,7 +643,15 @@ int sdio_write_blocks(sdio_t bus, uint16_t rca, uint32_t addr, uint32_t *pBuf, u
         } while (!(dev(bus)->STA & STA_mask));
     }
     // <---- TIME CRITICAL SECTION END ---->
-
+#else
+    dev(bus)->DCTRL  = (9 << 4) | SDIO_DCTRL_DTEN | SDIO_DCTRL_DMAEN;
+    dma_wait(sdio_config[bus].dma);
+    while (0 == (dev(bus)->STA & SDIO_STA_DBCKEND));
+    dma_stop(sdio_config[bus].dma);
+    STA = dev(bus)->STA & STA_mask;
+    dma_release(sdio_config[bus].dma);
+    data_sent += length;
+#endif
     // Save STA register value for further analysis
     STA = dev(bus)->STA;
 

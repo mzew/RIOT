@@ -82,6 +82,7 @@ typedef enum {
     SDR_ECCDisabled         = 0x22,  // The command has been executed without using the internal ECC
     SDR_EraseReset          = 0x23,  // An erase sequence was cleared before executing
     SDR_AKESeqError         = 0x24,  // Error in the sequence of the authentication process
+    SDR_DMAError            = 0x25,
     SDR_UnknownError        = 0xFF   // Unknown error
 } SDResult;
 
