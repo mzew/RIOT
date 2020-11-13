@@ -92,6 +92,8 @@ static void _sdcard_sdio_parse(sdcard_sdio_t* card) {
     }
 }
 
+static int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_width_t w);
+
 int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
 {
     dev->bus = bus;
@@ -173,6 +175,16 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
         return cmd_res;
     }
 
+    // Read the SCR register
+    if (dev->Type != SDCT_MMC) {
+        // MMC card doesn't support this feature
+        // Warning: this function set block size to 8 bytes
+        sdio_getSCR(dev->bus, dev->RCA, (uint32_t *)dev->SCR); // SCR tells if the card is 4bit capable
+    }
+
+    if (dev->SCR[1] & 0x05)
+        sdcard_sdio_set_bus_width(dev, SDIO_4bit);
+
     // For SDv1, SDv2 and MMC card must set block size
     // The SDHC/SDXC always have fixed block size (512 bytes)
     if ((dev->Type == SDCT_SDSC_V1) || (dev->Type == SDCT_SDSC_V2) || (dev->Type == SDCT_MMC)) {
@@ -186,7 +198,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     return SDR_Success;
 }
 
-int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_width_t w) {
+static int sdcard_sdio_set_bus_width(sdcard_sdio_t *dev, sdio_width_t w) {
     SDResult cmd_res = SDR_Success;
     uint32_t clk;
     if (dev->Type != SDCT_MMC) {
