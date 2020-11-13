@@ -236,6 +236,8 @@ int sdio_set_bus_width(sdio_t bus, sdio_width_t w);
 
 void sdio_set_bus_clock(sdio_t bus, sdio_clk_t clk);
 
+int sdio_getSCR(sdio_t bus, uint16_t rca, uint32_t* scr);
+
 // SDIO command related functions
 
 void sdio_cmd(sdio_t bus, uint8_t cmd, uint32_t arg, uint32_t resp_type);

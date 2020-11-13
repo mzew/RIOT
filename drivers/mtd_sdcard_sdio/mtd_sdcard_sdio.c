@@ -48,7 +48,6 @@ static int mtd_sdcard_init(mtd_dev_t *dev)
         dev->pages_per_sector = 1;
         dev->sector_count = mtd_sd->card->BlockCount;
         dev->page_size = mtd_sd->card->BlockSize;
-//        sdcard_sdio_set_bus_width(mtd_sd->card, SDIO_4bit); TODO: 4-bit mode does not work
         return 0;
     }
     return -EIO;
