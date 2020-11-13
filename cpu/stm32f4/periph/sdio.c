@@ -212,7 +212,7 @@ int sdio_set_bus_width(sdio_t bus, sdio_width_t w) {
     // Configure new bus width
     clk  = dev(bus)->CLKCR;
     clk &= ~SDIO_CLKCR_WIDBUS;
-    clk |= (w & SDIO_CLKCR_WIDBUS);
+    clk |= (w << SDIO_CLKCR_WIDBUS_Pos) & SDIO_CLKCR_WIDBUS;
     dev(bus)->CLKCR = clk;
 
     return cmd_res;
