@@ -229,9 +229,11 @@ void sdio_set_bus_clock(sdio_t bus, sdio_clk_t c) {
 
     clk  = dev(bus)->CLKCR;
     clk &= ~SDIO_CLKCR_CLKDIV;
-    clk |= (stm32_sdio_clk_div[c] & SDIO_CLKCR_CLKDIV);
+    if (c != SDIO_CLK_48MHZ)
+        clk |= (stm32_sdio_clk_div[c] & SDIO_CLKCR_CLKDIV);
+    else
+        clk |= SDIO_CLKCR_BYPASS;
     dev(bus)->CLKCR = clk;
-    // TODO: SDIO_CLK_48MHZ - activate bypass
 }
 
 int sdio_getSCR(sdio_t bus, uint16_t rca, uint32_t* pSCR) {
