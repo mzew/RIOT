@@ -152,7 +152,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     _sdcard_sdio_parse(dev);
 
     // Now card must be in stand-by mode, from this point it is possible to increase bus speed
-    sdio_set_bus_clock(dev->bus, SDIO_CLK_24MHZ);
+//    sdio_set_bus_clock(dev->bus, SDIO_CLK_24MHZ);
 
     // Put the SD card to the transfer mode
     sdio_cmd(dev->bus, SD_CMD_SEL_DESEL_CARD, dev->RCA << 16, SD_RESP_SHORT); // CMD7

@@ -57,12 +57,12 @@ static inline SDIO_TypeDef *dev(sdio_t bus)
 }
 
 static void sdio_init_pins(sdio_t bus)  {
-    gpio_init(sdio_config[bus].cmd_pin, GPIO_OUT);
-    gpio_init(sdio_config[bus].ck_pin, GPIO_OUT);
-    gpio_init(sdio_config[bus].d0_pin, GPIO_OUT);
-    gpio_init(sdio_config[bus].d1_pin, GPIO_OUT);
-    gpio_init(sdio_config[bus].d2_pin, GPIO_OUT);
-    gpio_init(sdio_config[bus].d3_pin, GPIO_OUT);
+    gpio_init(sdio_config[bus].cmd_pin, GPIO_IN_PU);
+    gpio_init(sdio_config[bus].ck_pin, GPIO_IN_PU);
+    gpio_init(sdio_config[bus].d0_pin, GPIO_IN_PU);
+    gpio_init(sdio_config[bus].d1_pin, GPIO_IN_PU);
+    gpio_init(sdio_config[bus].d2_pin, GPIO_IN_PU);
+    gpio_init(sdio_config[bus].d3_pin, GPIO_IN_PU);
     gpio_init_af(sdio_config[bus].cmd_pin, sdio_config[bus].pins_af);
     gpio_init_af(sdio_config[bus].ck_pin, sdio_config[bus].pins_af);
     gpio_init_af(sdio_config[bus].d0_pin, sdio_config[bus].pins_af);
