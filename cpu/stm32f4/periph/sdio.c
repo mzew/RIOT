@@ -39,6 +39,10 @@
 #define SDIO_ICR_CMD                  ((uint32_t)(SDIO_ICR_CCRCFAILC | SDIO_ICR_CTIMEOUTC | \
                                                 SDIO_ICR_CMDRENDC | SDIO_ICR_CMDSENTC))
 
+// Bitmap to clear the SDIO data flags
+#define SDIO_ICR_DATA                 ((uint32_t)(SDIO_ICR_RXOVERRC | SDIO_ICR_DCRCFAILC | \
+                                                SDIO_ICR_DTIMEOUTC | SDIO_ICR_DBCKENDC))
+
 // Pattern for R6 response
 #define SD_CHECK_PATTERN              ((uint32_t)0x000001AAU)
 
@@ -228,6 +232,62 @@ void sdio_set_bus_clock(sdio_t bus, sdio_clk_t c) {
     clk |= (stm32_sdio_clk_div[c] & SDIO_CLKCR_CLKDIV);
     dev(bus)->CLKCR = clk;
     // TODO: SDIO_CLK_48MHZ - activate bypass
+}
+
+int sdio_getSCR(sdio_t bus, uint16_t rca, uint32_t* pSCR) {
+    SDResult cmd_res;
+
+    // Set block size to 8 bytes
+    sdio_cmd(bus, SD_CMD_SET_BLOCKLEN, 8, SD_RESP_SHORT); // CMD16
+    cmd_res = sdio_wait_R1(bus, SD_CMD_SET_BLOCKLEN);
+    if (cmd_res != SDR_Success) {
+        return cmd_res;
+    }
+
+    // Send leading command for ACMD<n> command
+    sdio_cmd(bus, SD_CMD_APP_CMD, rca << 16, SD_RESP_SHORT); // CMD55
+    cmd_res = sdio_wait_R1(bus, SD_CMD_APP_CMD);
+    if (cmd_res != SDR_Success) {
+        return cmd_res;
+    }
+
+    // Clear the data flags
+    dev(bus)->ICR = SDIO_ICR_DATA;
+
+    // Configure the SDIO data transfer
+    dev(bus)->DTIMER = SD_DATA_R_TIMEOUT; // Data read timeout
+    dev(bus)->DLEN   = 8; // Data length in bytes
+    // Data transfer:
+    //   - type: block
+    //   - direction: card -> controller
+    //   - size: 2^3 = 8bytes
+    //   - DPSM: enabled
+    dev(bus)->DCTRL  = SDIO_DCTRL_DTDIR | (3 << 4) | SDIO_DCTRL_DTEN;
+
+    // Send SEND_SCR command
+    sdio_cmd(bus, SD_CMD_SEND_SCR, 0, SD_RESP_SHORT); // ACMD51
+    cmd_res = sdio_wait_R1(bus, SD_CMD_SEND_SCR);
+    if (cmd_res != SDR_Success) {
+        return cmd_res;
+    }
+
+    // Receive the SCR register value
+    while (!(dev(bus)->STA & (SDIO_STA_RXOVERR | SDIO_STA_DCRCFAIL | SDIO_STA_DTIMEOUT | SDIO_STA_DBCKEND))) {
+        // Read word when data available in receive FIFO
+        if (dev(bus)->STA & SDIO_STA_RXDAVL) *pSCR++ = dev(bus)->FIFO;
+    }
+
+    // Check for errors
+    if (dev(bus)->STA & (SDIO_STA_DTIMEOUT | SDIO_STA_DCRCFAIL | SDIO_STA_RXOVERR)) {
+        if (dev(bus)->STA & SDIO_STA_DTIMEOUT) { cmd_res = SDR_DataTimeout;   }
+        if (dev(bus)->STA & SDIO_STA_DCRCFAIL) { cmd_res = SDR_DataCRCFail;   }
+        if (dev(bus)->STA & SDIO_STA_RXOVERR)  { cmd_res = SDR_RXOverrun;     }
+    }
+
+    // Clear the static SDIO flags
+    dev(bus)->ICR = SDIO_ICR_STATIC;
+
+    return cmd_res;
 }
 
 void sdio_cmd(sdio_t bus, uint8_t cmd, uint32_t arg, uint32_t resp_type) {
