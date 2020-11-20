@@ -124,6 +124,12 @@ void shell_post_command_hook(int ret, int argc, char **argv);
  */
 typedef int (*shell_command_handler_t)(int argc, char **argv);
 
+typedef bool (*shell_input_callback_t)(uint8_t* buf, size_t size);
+
+typedef int (*get_char_t)(void);
+
+void shell_set_input_callback(shell_input_callback_t cb);
+
 /**
  * @brief           A single command in the list of the supported commands.
  * @details         The list of commands is NULL terminated,
