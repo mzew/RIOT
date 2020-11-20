@@ -419,7 +419,7 @@ static inline void new_line(void)
  * @return  EOF, if the end of the input stream was reached.
  * @return  -ENOBUFS if the buffer size was exceeded.
  */
-static int readline(char *buf, size_t size)
+static int readline(get_char_t __get_char, char *buf, size_t size)
 {
     int curr_pos = 0;
     bool length_exceeded = false;
@@ -429,7 +429,7 @@ static int readline(char *buf, size_t size)
     while (1) {
         assert((size_t) curr_pos < size);
 
-        int c = getchar();
+        int c = __get_char();
 
         switch (c) {
 
@@ -483,13 +483,48 @@ static int readline(char *buf, size_t size)
     }
 }
 
+#ifdef SHELL_INPUT_CALLBACK
+#include "stdio_base.h"
+static uint8_t in_buf[64] = {0};
+static size_t read_size = 0;
+static size_t buf_pos = 0;
+static shell_input_callback_t in_cb = 0;
+
+#ifndef SHELL_INPUT_CALLBACK_THRESHOLD
+#define SHELL_INPUT_CALLBACK_THRESHOLD 6
+#endif
+
+void shell_set_input_callback(shell_input_callback_t cb) {
+    in_cb = cb;
+}
+
+int _get_char(void) {
+    if (buf_pos < read_size) {
+        return in_buf[buf_pos++];
+    }
+    do {
+        buf_pos = 0;
+        read_size = stdio_read(in_buf, sizeof(in_buf));
+        if ((read_size > SHELL_INPUT_CALLBACK_THRESHOLD) && in_cb)
+            in_cb(in_buf, read_size);
+    } while (read_size > SHELL_INPUT_CALLBACK_THRESHOLD);
+    return (buf_pos < read_size) ? in_buf[buf_pos++] : EOF;
+}
+#endif
+
 void shell_run_once(const shell_command_t *shell_commands,
                     char *line_buf, int len)
 {
     print_prompt();
 
     while (1) {
-        int res = readline(line_buf, len);
+#ifdef SHELL_INPUT_CALLBACK
+        get_char_t get_char_fn = _get_char;
+#else
+        get_char_t get_char_fn = getchar;
+#endif
+
+        int res = readline(get_char_fn, line_buf, len);
 
         switch (res) {
 
