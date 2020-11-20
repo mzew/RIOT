@@ -23,6 +23,11 @@ USEMODULE += stdio_null
 # Include riotboot flash partition functionality
 USEMODULE += riotboot_slot
 
+# SPI-nor golden image and update
+USEMODULE += periph_spi
+USEMODULE += mtd_spi_nor
+USEMODULE += riotboot_flashwrite
+
 # RIOT codebase
 RIOTBASE ?= $(CURDIR)/../../
 
