@@ -252,7 +252,7 @@ static void handle_input_line(const shell_command_t *command_list, char *line)
  * @return  EOF, if the end of the input stream was reached.
  * @return  ENOBUFS if the buffer size was exceeded.
  */
-static int readline(char *buf, size_t size)
+static int readline(get_char_t __get_char, char *buf, size_t size)
 {
     int curr_pos = 0;
     bool length_exceeded = false;
@@ -264,7 +264,7 @@ static int readline(char *buf, size_t size)
          * buf. This ensures the terminator can always fit. */
         assert((size_t) curr_pos < size);
 
-        int c = getchar();
+        int c = __get_char();
         if (c < 0) {
             return EOF;
         }
@@ -336,13 +336,42 @@ static inline void print_prompt(void)
     flush_if_needed();
 }
 
+#ifdef SHELL_INPUT_CALLBACK
+#include "stdio_uart.h"
+static uint8_t in_buf[STDIO_UART_RX_BUFSIZE] = {0};
+static size_t buf_size = 0;
+static size_t buf_pos = 0;
+static shell_input_callback_t in_cb = 0;
+
+void shell_set_input_callback(shell_input_callback_t cb) {
+    in_cb = cb;
+}
+
+int _get_char(void) {
+    if (buf_pos < buf_size) {
+        return in_buf[buf_pos++];
+    }
+    do {
+        buf_pos = 0;
+        buf_size = stdio_read(in_buf, STDIO_UART_RX_BUFSIZE);
+    } while (in_cb && in_cb(in_buf, buf_size));
+    return (buf_pos < buf_size) ? in_buf[buf_pos++] : EOF;
+}
+#endif
+
 void shell_run_once(const shell_command_t *shell_commands,
                     char *line_buf, int len)
 {
     print_prompt();
 
     while (1) {
-        int res = readline(line_buf, len);
+#ifdef SHELL_INPUT_CALLBACK
+        get_char_t get_char_fn = _get_char;
+#else
+        get_char_t get_char_fn = getchar;
+#endif
+
+        int res = readline(get_char_fn, line_buf, len);
 
         switch (res) {
 
