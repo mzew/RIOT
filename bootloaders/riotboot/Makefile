@@ -27,6 +27,7 @@ USEMODULE += riotboot_slot
 USEMODULE += periph_spi
 USEMODULE += mtd_spi_nor
 USEMODULE += riotboot_flashwrite
+USEMODULE += riotboot_shared_data
 
 # RIOT codebase
 RIOTBASE ?= $(CURDIR)/../../

@@ -31,42 +31,14 @@
 #include "mtd_spi_nor.h"
 #include "flash_layout.h"
 #include "riotboot/flashwrite.h"
+#include "riotboot/shared_data.h"
 
-typedef struct {
-    uint32_t bootCount;
-    uint32_t updatePending;
-} boot_app_data_t;
+
 
 typedef struct {
     uint32_t size;
     uint32_t crc;
 } fw_header;
-
-static void load_bootapp_data(mtd_dev_t* mtd, boot_app_data_t* data) {
-    mtd_read(mtd, data, FL_BOOT_APP_DATA, sizeof(boot_app_data_t));
-}
-
-static void store_bootapp_data(mtd_dev_t* mtd, boot_app_data_t* data) {
-    mtd_write(mtd, data, FL_BOOT_APP_DATA, sizeof(boot_app_data_t) );
-}
-
-static void boot_app_data_init(boot_app_data_t* d) {
-    d->bootCount = 0;
-    d->updatePending = 0;
-}
-
-static bool boot_app_data_valid(boot_app_data_t* d) {
-    if (d->bootCount == 0xffffffff)
-        return false;
-
-    if (d->updatePending == 0xffffffff)
-        return false;
-
-    if (d->bootCount > 3)
-        return false;
-
-    return true;
-}
 
 static riotboot_flashwrite_t state;
 
@@ -95,15 +67,15 @@ void kernel_init(void)
     uint32_t version = 0;
     int slot = -1;
 
-    boot_app_data_t data;
+    shared_data_t data;
 
     spi_init(SPI_DEV(0));
     extern mtd_dev_t* mtd0;
     mtd_init(mtd0);
-    load_bootapp_data(mtd0, &data);
-    if (!boot_app_data_valid(&data)) {
-        boot_app_data_init(&data);
-        store_bootapp_data(mtd0, &data);
+    load_shared_data(mtd0, &data);
+    if (!shared_data_valid(&data)) {
+        shared_data_init(&data);
+        store_shared_data(mtd0, &data);
     }
 
     if (data.updatePending) {
