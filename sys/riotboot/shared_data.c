@@ -9,6 +9,7 @@ void load_shared_data(mtd_dev_t* mtd, shared_data_t* data) {
 }
 
 void store_shared_data(mtd_dev_t* mtd, shared_data_t* data) {
+    mtd_erase(mtd, FL_BOOT_APP_DATA, mtd->page_size * mtd->pages_per_sector);
     mtd_write(mtd, data, FL_BOOT_APP_DATA, sizeof(shared_data_t) );
 }
 
