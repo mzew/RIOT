@@ -46,17 +46,13 @@ static bool _boot_program_MCU_flash(mtd_dev_t* mtd, uint32_t hdr_addr, uint32_t 
     fw_header hdr;
     mtd_read(mtd, &hdr, hdr_addr, sizeof(hdr));
 
-    riotboot_flashwrite_init(&state, 0);
-    for (unsigned pos = 0; pos < hdr.size; pos += mtd->page_size) {
+    riotboot_flashwrite_init_raw(&state, 0, 0);
+    for (unsigned p = 0; p < hdr.size; p += mtd->page_size) {
         uint8_t buf[mtd->page_size];
-        mtd_read(mtd, buf, fw_addr+pos, mtd->page_size);
-        if (pos == 0)
-            riotboot_flashwrite_putbytes(&state, &buf[RIOTBOOT_FLASHWRITE_SKIPLEN],
-                                         mtd->page_size-RIOTBOOT_FLASHWRITE_SKIPLEN, true);
-        else
-            riotboot_flashwrite_putbytes(&state, buf, mtd->page_size, true);
+        mtd_read(mtd, buf, fw_addr+p, mtd->page_size);
+        bool more = (p + mtd->page_size < hdr.size) ? true : false;
+        riotboot_flashwrite_putbytes(&state, buf, mtd->page_size, more);
     }
-    riotboot_flashwrite_finish(&state);
     return true;
 }
 
