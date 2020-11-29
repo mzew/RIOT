@@ -94,7 +94,7 @@ static inline int _flashbank_sector(void *addr) {
     if(sn > 3 && sn < 8) {
         sn = 4;
     }
-    else if(sn > 8){
+    else if(sn >= 8){
         sn = (sn / 8) + 4;
     }
     return sn;
