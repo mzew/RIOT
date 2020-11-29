@@ -76,6 +76,8 @@ void kernel_init(void)
 
     if (data.updatePending) {
         _boot_program_MCU_flash(mtd0, FL_UPDATE_HEADER, FL_UPDATE);
+        data.updatePending = 0;
+        store_shared_data(mtd0, &data);
     }
 
     for (unsigned i = 0; i < riotboot_slot_numof; i++) {
