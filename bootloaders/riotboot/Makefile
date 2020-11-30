@@ -29,6 +29,11 @@ USEMODULE += mtd_spi_nor
 USEMODULE += riotboot_flashwrite
 USEMODULE += riotboot_shared_data
 
+# stm32f4 128k alligned slot
+SLOT0_OFFSET ?= 0x20000
+SLOT0_LEN ?= 0x80000
+RIOTBOOT_LEN ?= $(SLOT0_OFFSET)
+
 # RIOT codebase
 RIOTBASE ?= $(CURDIR)/../../
 
