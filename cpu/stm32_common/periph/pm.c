@@ -144,3 +144,17 @@ void pm_off(void)
     irq_disable();
     pm_set(0);
 }
+
+static poweroff_cb_t* emergency_poweroff = 0;
+
+void pm_set_brownout_callback(poweroff_cb_t* cb) {
+    emergency_poweroff = cb;
+    if (cb) {
+//        PWR->CR &= ~PWR_CR_PLS_Msk;
+//        PWR->CR |= PWR_CR_PLS_0 | PWR_CR_PLS_2;
+//        NVIC_EnableIRQ(PVD_IRQn);
+    }
+    else {
+        NVIC_DisableIRQ(PVD_IRQn);
+    }
+}

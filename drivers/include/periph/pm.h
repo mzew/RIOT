@@ -52,6 +52,10 @@ void pm_off(void);
  */
 void pm_set_lowest(void);
 
+typedef void (poweroff_cb_t)(void* arg);
+
+void pm_set_brownout_callback(poweroff_cb_t* cb);
+
 #ifdef __cplusplus
 }
 #endif
