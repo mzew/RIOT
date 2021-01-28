@@ -299,10 +299,17 @@ static const shell_command_t shell_commands[] = {
     { NULL, NULL, NULL },
 };
 
+#include "board.h"
+#include "periph/gpio.h"
+
 int main(void)
 {
     puts("AT command test app");
-
+    board_gsm_on(true);
+    board_wifi_on(true);
+    gpio_set(EN_RF_SW);
+    gpio_set(RF_SEL);
+    board_lora_on(true);
     /* run the shell */
     char line_buf[SHELL_DEFAULT_BUFSIZE];
     shell_run(shell_commands, line_buf, SHELL_DEFAULT_BUFSIZE);
