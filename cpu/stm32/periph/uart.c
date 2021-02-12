@@ -211,7 +211,6 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
      * signal level flickers during initialization resulting in garbage being
      * sent. */
     uart_init_pins(uart, rx_cb);
-
     /* enable RX interrupt if applicable */
     if (rx_cb) {
         NVIC_EnableIRQ(uart_config[uart].irqn);
@@ -452,6 +451,13 @@ void uart_poweroff(uart_t uart)
     dev(uart)->CR1 &= ~(USART_CR1_UE);
 
     uart_disable_clock(uart);
+}
+
+void uart_pins_swap(uart_t uart, bool sw) {
+    if (sw)
+        dev(uart)->CR2 |= USART_CR2_SWAP;
+    else
+        dev(uart)->CR2 &= ~USART_CR2_SWAP;
 }
 
 #ifdef MODULE_PERIPH_UART_NONBLOCKING

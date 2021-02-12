@@ -285,6 +285,8 @@ void uart_poweron(uart_t uart);
  */
 void uart_poweroff(uart_t uart);
 
+void uart_pins_swap(uart_t uart, bool sw);
+
 #ifdef __cplusplus
 }
 #endif
