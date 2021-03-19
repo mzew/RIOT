@@ -25,10 +25,60 @@
 #include "panic.h"
 #include "riotboot/slot.h"
 
+#include "periph/gpio.h"
+#include "periph/spi.h"
+#include "mtd.h"
+#include "mtd_spi_nor.h"
+#include "flash_layout.h"
+#include "riotboot/flashwrite.h"
+#include "riotboot/shared_data.h"
+
+
+
+typedef struct {
+    uint32_t size;
+    uint32_t crc;
+} fw_header;
+
+static riotboot_flashwrite_t state;
+
+static bool _boot_program_MCU_flash(mtd_dev_t* mtd, uint32_t hdr_addr, uint32_t fw_addr) {
+    fw_header hdr;
+    mtd_read(mtd, &hdr, hdr_addr, sizeof(hdr));
+
+    riotboot_flashwrite_init_raw(&state, 0, 0);
+    for (unsigned p = 0; p < hdr.size; p += mtd->page_size) {
+        uint8_t buf[mtd->page_size];
+        mtd_read(mtd, buf, fw_addr+p, mtd->page_size);
+        bool more = (p + mtd->page_size < hdr.size) ? true : false;
+        riotboot_flashwrite_putbytes(&state, buf, mtd->page_size, more);
+    }
+    return true;
+}
+
+
+
 void kernel_init(void)
 {
     uint32_t version = 0;
     int slot = -1;
+
+    shared_data_t data;
+
+    spi_init(SPI_DEV(0));
+    extern mtd_dev_t* mtd0;
+    mtd_init(mtd0);
+    load_shared_data(mtd0, &data);
+    if (!shared_data_valid(&data)) {
+        shared_data_init(&data);
+        store_shared_data(mtd0, &data);
+    }
+
+    if (data.updatePending) {
+        _boot_program_MCU_flash(mtd0, FL_UPDATE_HEADER, FL_UPDATE);
+        data.updatePending = 0;
+        store_shared_data(mtd0, &data);
+    }
 
     for (unsigned i = 0; i < riotboot_slot_numof; i++) {
         const riotboot_hdr_t *riot_hdr = riotboot_slot_get_hdr(i);
