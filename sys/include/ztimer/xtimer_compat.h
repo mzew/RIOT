@@ -135,6 +135,16 @@ static inline void xtimer_set_wakeup(xtimer_t *timer, uint32_t offset,
     ztimer_set_wakeup(ZTIMER_USEC, timer, offset, pid);
 }
 
+static inline void xtimer_set_timeout_flag(xtimer_t *t, uint32_t timeout) {
+    ztimer_set_timeout_flag(ZTIMER_USEC, t, timeout);
+}
+
+static inline void xtimer_set_timeout_flag64(xtimer_t *t, uint64_t timeout) {
+    assert(timeout <= 0xffffffff);
+    ztimer_set_timeout_flag(ZTIMER_USEC, t, (uint32_t)timeout);
+}
+
+
 /*
    static inline void xtimer_set64(xtimer_t *timer, uint64_t offset_us);
    static inline void xtimer_tsleep32(xtimer_ticks32_t ticks);
