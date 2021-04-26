@@ -45,7 +45,7 @@ void event_thread_init(event_queue_t *queue, char *stack, size_t stack_size,
      */
     event_queue_init_detached(queue);
 
-    thread_create(stack, stack_size, priority, 0, _handler, queue, "event");
+    thread_create(stack, stack_size, priority, THREAD_CREATE_STACKTEST, _handler, queue, "event");
 }
 
 #ifndef EVENT_THREAD_STACKSIZE_DEFAULT
