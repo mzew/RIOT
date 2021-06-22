@@ -94,12 +94,12 @@ int mcp2515_init(candev_mcp2515_t *dev, void (*irq_handler_cb)(void *))
     int res;
 
     res = gpio_init_int(dev->conf->int_pin, GPIO_IN_PU, GPIO_FALLING,
-                        (gpio_cb_t)irq_handler_cb, (void *)dev);
+                        (gpio_cb_t)irq_handler_cb, (void *)dev); // optionally polling interrupt status over SPI
     if (res != 0) {
         DEBUG("Error setting interrupt pin!\n");
         return -1;
     }
-    gpio_init(dev->conf->rst_pin, GPIO_OUT);
+    gpio_init(dev->conf->rst_pin, GPIO_OUT); // optionally soft reset over SPI
 
     res = mcp2515_spi_init(dev);
     if (res < 0) {
