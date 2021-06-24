@@ -20,7 +20,7 @@
 #include "can/device.h"
 #include "mcp2515_params.h"
 
-#define CANDEV_MCP2515_NUMOF ((ARRAY_SIZE(candev_mcp2515_params) / ARRAY_SIZE(candev_params_t)))
+#define CANDEV_MCP2515_NUMOF (ARRAY_SIZE(candev_mcp2515_params))
 
 #ifndef CANDEV_MCP2515_STACKSIZE
 #define CANDEV_MCP2515_STACKSIZE (THREAD_STACKSIZE_DEFAULT + THREAD_EXTRA_STACKSIZE_PRINTF)
