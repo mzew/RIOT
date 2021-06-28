@@ -118,10 +118,8 @@ int mcp2515_init(candev_mcp2515_t *dev, void (*irq_handler_cb)(void *))
 
 void mcp2515_reset(candev_mcp2515_t *dev)
 {
-    gpio_clear(dev->conf->rst_pin);
-    xtimer_usleep(RESET_DELAY_US);
-    gpio_set(dev->conf->rst_pin);
-    xtimer_usleep(_osc_startup(dev));
+    mcp2515_spi_reset(dev);
+    xtimer_usleep(RESET_DELAY_US + _osc_startup(dev));
 }
 
 static void _fill_standard_id(uint32_t id, uint8_t *bytebuf)
