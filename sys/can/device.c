@@ -60,9 +60,11 @@ static void _can_event(candev_t *dev, candev_event_t event, void *arg)
 
     switch (event) {
     case CANDEV_EVENT_ISR:
+    case CANDEV_EVENT_POLL:
         DEBUG("_can_event: CANDEV_EVENT_ISR\n");
         msg.type = CAN_MSG_EVENT;
-        if (msg_send(&msg, candev_dev->pid) <= 0) {
+        if ( (event == CANDEV_EVENT_ISR ?
+              msg_send(&msg, candev_dev->pid) : msg_try_send(&msg, candev_dev->pid)) <= 0) {
             DEBUG("can device: isr lost\n");
         }
         break;

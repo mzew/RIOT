@@ -52,6 +52,7 @@ typedef enum {
     CANDEV_EVENT_BUS_OFF,          /**< bus-off detected */
     CANDEV_EVENT_ERROR_PASSIVE,    /**< driver switched in error passive */
     CANDEV_EVENT_ERROR_WARNING,    /**< driver reached error warning */
+    CANDEV_EVENT_POLL,
     /* expand this list if needed */
 } candev_event_t;
 
