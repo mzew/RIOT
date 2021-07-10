@@ -284,8 +284,9 @@ static void _isr(candev_t *candev)
             _irq_message_error(dev);
         }
 
+        /* clear all flags except for RX flags, which are cleared by receiving */
         if (mutex_trylock(&_mcp_mutex)) {
-            flag = mcp2515_get_irq(dev);
+            mcp2515_clear_irq(dev, flag & ~(INT_RX0 | INT_RX1));
             mutex_unlock(&_mcp_mutex);
         }
         else {
@@ -294,9 +295,8 @@ static void _isr(candev_t *candev)
             return;
         }
 
-        /* clear all flags except for RX flags, which are cleared by receiving */
         if (mutex_trylock(&_mcp_mutex)) {
-            mcp2515_clear_irq(dev, flag & ~(INT_RX0 | INT_RX1));
+            flag = mcp2515_get_irq(dev);
             mutex_unlock(&_mcp_mutex);
         }
         else {
