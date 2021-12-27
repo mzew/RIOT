@@ -486,6 +486,11 @@ typedef enum {
 /** @} */
 
 /**
+ * DMA circular flag
+ */
+#define DMA_CIRCULAR      (0x01 << 4)
+
+/**
  * @brief   Available number of ADC devices
  */
 #if defined(CPU_FAM_STM32F1) || defined(CPU_FAM_STM32F2)
@@ -710,6 +715,8 @@ typedef struct {
 #ifdef MODULE_PERIPH_DMA
     dma_t dma;              /**< Logical DMA stream used for TX */
     uint8_t dma_chan;       /**< DMA channel used for TX */
+    dma_t dma_rx;
+    uint8_t dma_rx_chan;
 #endif
 } uart_conf_t;
 
@@ -1045,6 +1052,14 @@ void dma_setup(dma_t dma, int chan, void *periph_addr, dma_mode_t mode,
  * @param[in]   inc_mem     Increment the memory address after read/write
  */
 void dma_prepare(dma_t dma, void *mem, size_t len, bool incr_mem);
+
+/**
+ * @brief Get remaining ammount of data to be transferred
+ * @param dma   logical DMA stream
+ *
+ * @return  remaining ammount of data
+ */
+unsigned dma_get_remaining(dma_t dma);
 
 #endif /* MODULE_PERIPH_DMA */
 
