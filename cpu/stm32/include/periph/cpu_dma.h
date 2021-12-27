@@ -113,6 +113,11 @@ typedef enum {
 #define DMA_DATA_WIDTH_WORD      (0x02) /**< Word width (4 bytes)*/
 /** @} */
 
+/**
+ * DMA circular flag
+ */
+#define DMA_CIRCULAR      (0x01 << 4)
+
 #ifdef MODULE_PERIPH_DMA
 /**
  * @brief   DMA stream not defined
@@ -263,6 +268,14 @@ void dma_setup_ext(dma_t dma, dma_burst_t pburst, dma_burst_t mburst,
  * @param[in]   inc_mem     Increment the memory address (by the transfer width) after read/write
  */
 void dma_prepare(dma_t dma, void *mem, size_t len, bool incr_mem);
+
+/**
+ * @brief Get remaining ammount of data to be transferred
+ * @param dma   logical DMA stream
+ *
+ * @return  remaining ammount of data
+ */
+unsigned dma_get_remaining(dma_t dma);
 
 #endif /* MODULE_PERIPH_DMA */
 

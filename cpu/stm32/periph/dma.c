@@ -522,9 +522,19 @@ int dma_configure(dma_t dma, int chan, const volatile void *src, volatile void *
     uint32_t width = (flags & DMA_DATA_WIDTH_MASK) >> DMA_DATA_WIDTH_SHIFT;
 
     dma_setup(dma, chan, periph_addr, mode, width, inc_periph);
+
+#if CPU_FAM_STM32F2 || CPU_FAM_STM32F4 || CPU_FAM_STM32F7
+    dma_ctx[dma].stream->CONTROL_REG |= (flags & DMA_CIRCULAR ? 1 : 0) << DMA_SxCR_CIRC_Pos;
+#endif
+
     dma_prepare(dma, mem_addr, len, inc_mem);
 
     return 0;
+}
+
+unsigned dma_get_remaining(dma_t dma)
+{
+    return dma_stream(dma)->NDTR_REG;
 }
 
 void dma_start(dma_t dma)
