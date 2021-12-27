@@ -88,6 +88,14 @@ int isrpipe_write(isrpipe_t *isrpipe, const uint8_t *buf, size_t n);
  */
 int isrpipe_read(isrpipe_t *isrpipe, uint8_t *buf, size_t count);
 
+/**
+ * @brief   Advance write pointer
+ * @param isrpipe       isrpipe object to operate on
+ * @param count         number of bytes to advance
+ * @return  nnnnumber of bytes advanced
+ */
+int isrpipe_advance(isrpipe_t *isrpipe, unsigned count);
+
 #ifdef __cplusplus
 }
 #endif

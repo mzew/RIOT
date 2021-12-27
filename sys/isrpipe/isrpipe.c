@@ -55,3 +55,10 @@ int isrpipe_read(isrpipe_t *isrpipe, uint8_t *buffer, size_t count)
     }
     return res;
 }
+
+int isrpipe_advance(isrpipe_t *isrpipe, unsigned count)
+{
+    isrpipe->tsrb.writes += count;
+    mutex_unlock(&isrpipe->mutex);
+    return count;
+}
