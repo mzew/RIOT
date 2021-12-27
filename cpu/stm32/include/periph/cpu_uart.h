@@ -130,6 +130,8 @@ typedef struct {
 #ifdef MODULE_PERIPH_DMA
     dma_t dma;              /**< Logical DMA stream used for TX */
     uint8_t dma_chan;       /**< DMA channel used for TX */
+    dma_t dma_rx;
+    uint8_t dma_rx_chan;
 #endif
 } uart_conf_t;
 
