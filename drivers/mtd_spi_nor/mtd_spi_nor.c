@@ -311,7 +311,11 @@ static uint32_t mtd_spi_nor_get_size(const mtd_jedec_id_t *id)
 static inline void wait_for_write_complete(const mtd_spi_nor_t *dev, uint32_t us)
 {
     unsigned i = 0, j = 0;
+#ifndef RIOTBOOT
     uint32_t div = 2;
+#else
+    (void)us;
+#endif
     uint32_t diff = 0;
     if (IS_ACTIVE(ENABLE_DEBUG) && IS_USED(MODULE_XTIMER)) {
         diff = xtimer_now_usec();
@@ -325,6 +329,7 @@ static inline void wait_for_write_complete(const mtd_spi_nor_t *dev, uint32_t us
             break;
         }
         i++;
+#ifndef RIOTBOOT
 #if MODULE_XTIMER
         if (us) {
             xtimer_usleep(us);
@@ -347,6 +352,7 @@ static inline void wait_for_write_complete(const mtd_spi_nor_t *dev, uint32_t us
         (void) us;
         thread_yield();
 #endif
+#endif // RIOTBOOT
     } while (1);
     DEBUG("wait loop %u times, yield %u times", i, j);
     if (IS_ACTIVE(ENABLE_DEBUG) && IS_ACTIVE(MODULE_XTIMER)) {
