@@ -25,6 +25,10 @@
 #include "can/raw.h"
 #include "timex.h"
 
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+#include "utlist.h"
+#endif
+
 #define ENABLE_DEBUG 0
 #include "debug.h"
 
@@ -39,6 +43,42 @@
 #define CONN_CAN_ISOTP_TIMEOUT_TX_CONF_US   (1 * US_PER_SEC)
 #endif
 
+static inline int try_put_msg(conn_can_raw_t *conn, msg_t *msg)
+{
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    return mbox_try_put(&conn->master->mbox, msg);
+#else
+    return mbox_try_put(&conn->mbox, msg);
+#endif
+}
+
+static inline void put_msg(conn_can_raw_t *conn, msg_t *msg)
+{
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    mbox_put(&conn->master->mbox, msg);
+#else
+    mbox_put(&conn->mbox, msg);
+#endif
+}
+
+static inline int try_get_msg(conn_can_raw_t *conn, msg_t *msg)
+{
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    return mbox_try_get(&conn->master->mbox, msg);
+#else
+    return mbox_try_get(&conn->mbox, msg);
+#endif
+}
+
+static inline void get_msg(conn_can_raw_t *conn, msg_t *msg)
+{
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    mbox_get(&conn->master->mbox, msg);
+#else
+    mbox_get(&conn->mbox, msg);
+#endif
+}
+
 int conn_can_raw_create(conn_can_raw_t *conn, struct can_filter *filter, size_t count,
                         int ifnum, int flags)
 {
@@ -51,7 +91,23 @@ int conn_can_raw_create(conn_can_raw_t *conn, struct can_filter *filter, size_t 
 
     DEBUG("conn_can_raw_create: create conn=%p, ifnum=%d flags=%d\n", (void *)conn, ifnum, flags);
 
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    DEBUG("conn_can_raw_create: conn=%p, conn->master=%p, ifnum=%d\n",
+          (void *)conn, (void *)conn->master, ifnum);
+
+    if (conn->master == conn || conn->master == NULL) {
+        conn->master = conn;
+        conn->master->next = NULL;
+        mutex_init(&conn->master->lock);
+        mutex_lock(&conn->master->lock);
+        DEBUG("conn_can_raw_create: init master conn\n");
+        mbox_init(&conn->master->mbox, conn->master->mbox_queue, CONN_CAN_RAW_MBOX_SIZE);
+        mutex_unlock(&conn->master->lock);
+    }
+#else
     mbox_init(&conn->mbox, conn->mbox_queue, CONN_CAN_RAW_MBOX_SIZE);
+#endif
+
     conn->flags = flags;
     conn->count = 0;
     conn->ifnum = ifnum;
@@ -86,20 +142,35 @@ int conn_can_raw_set_filter(conn_can_raw_t *conn, struct can_filter *filter, siz
         for (size_t i = 0; i < conn->count; i++) {
             DEBUG("conn_can_raw_set_filter: unsetting filter=0x%" PRIx32 ", mask=0x%" PRIx32 "\n",
                  conn->filter[i].can_id, conn->filter[i].can_mask);
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+            assert(conn->master != NULL);
+            raw_can_unsubscribe_rx_mbox(conn->ifnum, &conn->filter[i], &conn->master->mbox, conn);
+#else
             raw_can_unsubscribe_rx_mbox(conn->ifnum, &conn->filter[i], &conn->mbox, conn);
+#endif
         }
     }
 
     for (size_t i = 0; i < count; i++) {
         DEBUG("conn_can_raw_set_filter: setting filter=0x%" PRIx32 ", mask=0x%" PRIx32 "\n",
               filter[i].can_id, filter[i].can_mask);
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+        assert(conn->master != NULL);
+        int ret = raw_can_subscribe_rx_mbox(conn->ifnum, &filter[i], &conn->master->mbox, conn);
+#else
         int ret = raw_can_subscribe_rx_mbox(conn->ifnum, &filter[i], &conn->mbox, conn);
+#endif
         if (ret < 0) {
             DEBUG("conn_can_raw_set_filter: error setting filters %d\n", ret);
             for (size_t j = 0; j < i; j++) {
                 DEBUG("conn_can_raw_set_filter: unsetting filter=0x%" PRIx32 ", mask=0x%" PRIx32 "\n",
                       filter[j].can_id, filter[j].can_mask);
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+                assert(conn->master != NULL);
+                raw_can_unsubscribe_rx_mbox(conn->ifnum, &filter[j], &conn->master->mbox, conn);
+#else
                 raw_can_unsubscribe_rx_mbox(conn->ifnum, &filter[j], &conn->mbox, conn);
+#endif
             }
             return ret;
         }
@@ -107,6 +178,14 @@ int conn_can_raw_set_filter(conn_can_raw_t *conn, struct can_filter *filter, siz
 
     conn->filter = filter;
     conn->count = count;
+
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    if (conn != conn->master) {
+        mutex_lock(&conn->master->lock);
+        LL_APPEND(conn->master->next, (conn_can_raw_slave_t *)conn);
+        mutex_unlock(&conn->master->lock);
+    }
+#endif
 
     return 0;
 }
@@ -119,7 +198,7 @@ static void _tx_conf_timeout(void *arg)
     msg.type = _TIMEOUT_TX_MSG_TYPE;
     msg.content.value = _TIMEOUT_MSG_VALUE;
 
-    mbox_try_put(&conn->mbox, &msg);
+    try_put_msg(conn, &msg);
 }
 
 int conn_can_raw_send(conn_can_raw_t *conn, const struct can_frame *frame, int flags)
@@ -182,7 +261,7 @@ int conn_can_raw_send(conn_can_raw_t *conn, const struct can_frame *frame, int f
                 break;
             default:
                 DEBUG("conn_can_raw_send: unexpected msg=%x, requeing\n", msg.type);
-                mbox_put(&conn->mbox, &msg);
+                put_msg(conn, &msg);
                 if (!timeout--) {
                     return -EINTR;
                 }
@@ -203,7 +282,7 @@ static void _rx_timeout(void *arg)
     msg.type = _TIMEOUT_RX_MSG_TYPE;
     msg.content.value = _TIMEOUT_MSG_VALUE;
 
-    mbox_try_put(&conn->mbox, &msg);
+    try_put_msg(conn, &msg);
 }
 
 int conn_can_raw_recv(conn_can_raw_t *conn, struct can_frame *frame, uint32_t timeout)
@@ -216,6 +295,17 @@ int conn_can_raw_recv(conn_can_raw_t *conn, struct can_frame *frame, uint32_t ti
 
     assert(frame != NULL);
 
+    int ret;
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+    if (conn->rx)
+    {
+        memcpy(frame, conn->rx->data.iov_base, conn->rx->data.iov_len);
+        ret = conn->rx->data.iov_len;
+        raw_can_free_frame(conn->rx);
+        return ret;
+    }
+#endif
+
     ztimer_t timer;
 
     if (timeout != 0) {
@@ -224,11 +314,10 @@ int conn_can_raw_recv(conn_can_raw_t *conn, struct can_frame *frame, uint32_t ti
         ztimer_set(ZTIMER_USEC, &timer, timeout);
     }
 
-    int ret;
     msg_t msg;
     can_rx_data_t *rx;
 
-    mbox_get(&conn->mbox, &msg);
+    get_msg(conn, &msg);
     if (timeout != 0) {
         ztimer_remove(ZTIMER_USEC, &timer);
     }
@@ -257,7 +346,7 @@ int conn_can_raw_recv(conn_can_raw_t *conn, struct can_frame *frame, uint32_t ti
         }
         break;
     default:
-        mbox_put(&conn->mbox, &msg);
+        put_msg(conn, &msg);
         ret = -EINTR;
         break;
     }
@@ -279,11 +368,16 @@ int conn_can_raw_close(conn_can_raw_t *conn)
         for (size_t i = 0; i < conn->count; i++) {
             DEBUG("conn_can_raw_close: unsetting filter=0x%" PRIx32 ", mask=0x%" PRIx32 "\n",
                  conn->filter[i].can_id, conn->filter[i].can_mask);
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+            assert(conn->master != NULL);
+            raw_can_unsubscribe_rx_mbox(conn->ifnum, &conn->filter[i], &conn->master->mbox, conn);
+#else
             raw_can_unsubscribe_rx_mbox(conn->ifnum, &conn->filter[i], &conn->mbox, conn);
+#endif
         }
         conn->count = 0;
         msg_t msg;
-        while (mbox_try_get(&conn->mbox, &msg)) {
+        while (try_get_msg(conn, &msg)) {
             if (msg.type == CAN_MSG_RX_INDICATION) {
                 DEBUG("conn_can_raw_close: incoming msg pending, freeing\n");
                 raw_can_free_frame(msg.content.ptr);
@@ -291,8 +385,60 @@ int conn_can_raw_close(conn_can_raw_t *conn)
         }
         msg.type = _CLOSE_CONN_MSG_TYPE;
         msg.content.ptr = conn;
-        mbox_try_put(&conn->mbox, &msg);
+        try_put_msg(conn, &msg);
     }
 
     return 0;
 }
+
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+int conn_can_raw_select(conn_can_raw_slave_t **conn, conn_can_raw_t *master, uint32_t timeout)
+{
+    assert(master != NULL);
+    assert(conn != NULL);
+
+    int ret;
+
+    ztimer_t timer;
+    if (timeout != 0) {
+        timer.callback = _rx_timeout;
+        timer.arg = master;
+        ztimer_set(ZTIMER_USEC, &timer, timeout);
+    }
+
+    msg_t msg;
+    can_rx_data_t *rx;
+
+    mbox_get(&master->mbox, &msg);
+
+    if (timeout != 0) {
+        ztimer_remove(ZTIMER_USEC, &timer);
+    }
+    switch (msg.type) {
+    case CAN_MSG_RX_INDICATION:
+        DEBUG("conn_can_raw_select: CAN_MSG_RX_INDICATION\n");
+        rx = msg.content.ptr;
+        *conn = rx->arg;
+        (*conn)->rx = rx;
+        ret = 0;
+        break;
+    case _TIMEOUT_RX_MSG_TYPE:
+        DEBUG("conn_can_raw_select: _TIMEOUT_MSG_VALUE\n");
+        if (msg.content.value == _TIMEOUT_MSG_VALUE) {
+            ret = -ETIMEDOUT;
+        }
+        else {
+            ret = -EINTR;
+        }
+        *conn = NULL;
+        break;
+    default:
+        DEBUG("conn_can_raw_select: %d\n", msg.type);
+        *conn = NULL;
+        ret = -EINTR;
+        break;
+    }
+
+    return ret;
+}
+#endif
