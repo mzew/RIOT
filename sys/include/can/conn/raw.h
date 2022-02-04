@@ -51,6 +51,71 @@ extern "C" {
 /**
  * @brief   RAW CAN connection
  */
+#if defined(MODULE_CONN_CAN_RAW_MULTI) || defined(DOXYGEN)
+/**
+ * @brief RAW connection
+ *
+ * When conn_can_raw_multi module is used, this is a 'master' connection
+ * which can be used to send and receive with multiple connections within
+ * a single thread.
+ *
+ * If conn_can_raw_multi is not used, this is a simple RAW connection
+ */
+typedef struct conn_can_raw_master conn_can_raw_t;
+
+/**
+ * @brief RAW salve connection
+ *
+ * This is a slave connection which exists only when conn_can_raw_multi
+ * module is used.
+ */
+typedef struct conn_can_raw_slave {
+    struct conn_can_raw_slave *next;     /**< Next slave in the list */
+    struct conn_can_raw_master *master;  /**< Master connection holding the mailbox */
+    int ifnum;                           /**< Interface number of the can device */
+    int flags;                           /**< Config flags for that conn object */
+    size_t count;                        /**< number of filters set */
+    struct can_filter *filter;           /**< list of filter */
+    can_rx_data_t *rx;                   /**< Buffered rx data */
+} conn_can_raw_slave_t;
+
+/**
+ * @brief RAW master connection
+ */
+struct conn_can_raw_master {
+    /* slave fields */
+    struct conn_can_raw_slave *next;     /**< First slave in the list */
+    struct conn_can_raw_master *master;  /**< Master connection */
+    int ifnum;                           /**< Interface number of the can device */
+    int flags;                           /**< Config flags for that conn object */
+    size_t count;                        /**< number of filters set */
+    struct can_filter *filter;           /**< list of filter */
+    can_rx_data_t *rx;                   /**< Buffered rx data */
+    /* slave fields end */
+    mutex_t lock;                        /**< Master lock */
+    mbox_t mbox;                         /**< mailbox for the connection list */
+    /** Connection list message queue */
+    msg_t mbox_queue[CONN_CAN_RAW_MBOX_SIZE];
+};
+
+/**
+ * @brief Initialize a slave connection
+ *
+ * This initializes a slave connection.
+ *
+ * This must be called on slave connections when conn_can_raw_multi is used.
+ * Does not exist otherwise.
+ *
+ * @param[in]    master     the master connection
+ * @param[inout] slave      the slave connection to initialize
+ */
+static inline void conn_can_raw_init_slave(conn_can_raw_t *master, conn_can_raw_slave_t *slave)
+{
+    slave->next = NULL;
+    slave->master = master;
+    slave->rx = NULL;
+}
+#else
 typedef struct conn_can_raw {
     int ifnum;                 /**< Interface number of the can device */
     int flags;                 /**< Config flags for that conn object */
@@ -62,6 +127,7 @@ typedef struct conn_can_raw {
      */
     msg_t mbox_queue[CONN_CAN_RAW_MBOX_SIZE];
 } conn_can_raw_t;
+#endif
 
 /**
  * @brief  Create can connection socket
@@ -133,6 +199,19 @@ int conn_can_raw_send(conn_can_raw_t *conn, const struct can_frame *frame, int f
  * @return any other negative number in case of an error
  */
 int conn_can_raw_set_filter(conn_can_raw_t *conn, struct can_filter *filter, size_t count);
+
+#if defined(MODULE_CONN_CAN_RAW_MULTI) || defined(DOXYGEN)
+/**
+ * @brief Wait for reception from multiple connections
+ *
+ * @param[out] conn        RAW connection which received data
+ * @param[in] master       the master connection
+ * @param[in] timeout      timeout in us, 0 for infinite wait
+ *
+ * @return 0 if OK, < 0 if error
+ */
+int conn_can_raw_select(conn_can_raw_slave_t **conn, conn_can_raw_t *master, uint32_t timeout);
+#endif
 
 #ifdef __cplusplus
 }

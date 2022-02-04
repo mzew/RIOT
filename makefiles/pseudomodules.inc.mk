@@ -15,6 +15,7 @@ PSEUDOMODULES += can_raw
 PSEUDOMODULES += ccn-lite-utils
 PSEUDOMODULES += cc2538_rf_obs_sig
 PSEUDOMODULES += conn_can_isotp_multi
+PSEUDOMODULES += conn_can_raw_multi
 PSEUDOMODULES += cord_ep_standalone
 PSEUDOMODULES += core_%
 PSEUDOMODULES += cortexm_fpu
