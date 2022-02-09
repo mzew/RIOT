@@ -317,38 +317,57 @@ int conn_can_raw_recv(conn_can_raw_t *conn, struct can_frame *frame, uint32_t ti
     msg_t msg;
     can_rx_data_t *rx;
 
-    get_msg(conn, &msg);
-    if (timeout != 0) {
-        xtimer_remove(&timer);
-    }
-    switch (msg.type) {
-    case CAN_MSG_RX_INDICATION:
-        DEBUG("conn_can_raw_recv: CAN_MSG_RX_INDICATION\n");
-        rx = msg.content.ptr;
-        memcpy(frame, rx->data.iov_base, rx->data.iov_len);
-        ret = rx->data.iov_len;
-        raw_can_free_frame(rx);
-        break;
-    case _TIMEOUT_RX_MSG_TYPE:
-        if (msg.content.value == _TIMEOUT_MSG_VALUE) {
-            ret = -ETIMEDOUT;
-        }
-        else {
+    while (1)
+    {
+        get_msg(conn, &msg);
+        switch (msg.type) {
+        case CAN_MSG_RX_INDICATION:
+            DEBUG("conn_can_raw_recv: CAN_MSG_RX_INDICATION\n");
+            rx = msg.content.ptr;
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+            if (rx->arg != conn)
+            {
+                // if conn_can_raw_recv is used without preceding select(), assume the connection
+                // receiving exclusively, therefore drop frames designated for other connections
+                raw_can_free_frame(rx);
+                break;
+            }
+#endif
+            if (timeout != 0) {
+                xtimer_remove(&timer);
+            }
+            memcpy(frame, rx->data.iov_base, rx->data.iov_len);
+            ret = rx->data.iov_len;
+            raw_can_free_frame(rx);
+            return ret;
+        case _TIMEOUT_RX_MSG_TYPE:
+            if (msg.content.value == _TIMEOUT_MSG_VALUE) {
+                ret = -ETIMEDOUT;
+            }
+            else {
+                ret = -EINTR;
+            }
+            return ret;
+        case _CLOSE_CONN_MSG_TYPE:
+#ifdef MODULE_CONN_CAN_RAW_MULTI
+            if ((msg.content.ptr == conn) || (msg.content.ptr == conn->master)) {
+#else
+            if (msg.content.ptr == conn) {
+#endif
+                if (timeout != 0) {
+                    xtimer_remove(&timer);
+                }
+                ret = -ECONNABORTED;
+            }
+            else {
+                ret = -EINTR;
+            }
+            return ret;
+        default:
+            put_msg(conn, &msg);
             ret = -EINTR;
+            break;
         }
-        break;
-    case _CLOSE_CONN_MSG_TYPE:
-        if (msg.content.ptr == conn) {
-            ret = -ECONNABORTED;
-        }
-        else {
-            ret = -EINTR;
-        }
-        break;
-    default:
-        put_msg(conn, &msg);
-        ret = -EINTR;
-        break;
     }
 
     return ret;
