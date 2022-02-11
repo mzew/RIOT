@@ -125,13 +125,7 @@ plscnt_ctx_t* plscnt_read(plscnt_t t)
     plscnt_ctx_t* ret = &isr_ctx[t].ctx[isr_ctx[t].current];
 
     uint32_t irq_save = irq_disable();
-
-    ret->period = dev(t)->CNT;
     isr_ctx[t].current = next_ctx;
-
-    // Reset counter
-    dev(t)->EGR |= TIM_EGR_UG;
-
     irq_restore(irq_save);
 
     return ret;
@@ -139,6 +133,8 @@ plscnt_ctx_t* plscnt_read(plscnt_t t)
 
 void plscnt_start(plscnt_t t)
 {
+    // Reset counter
+    dev(t)->EGR |= TIM_EGR_UG;
     dev(t)->CR1 |= TIM_CR1_CEN;
 }
 
@@ -152,23 +148,17 @@ static inline void irq_handler(plscnt_t t)
     uint32_t status = (dev(t)->SR & dev(t)->DIER);
 
     plscnt_ctx_t* ctx = &isr_ctx[t].ctx[isr_ctx[t].current];
-    // TODO handle interrupt miss
-    // TODO profile and make it shorter
-    if (status & (TIM_SR_CC1IF)) {
-        ctx->channels[0]++;
-        dev(t)->SR &= ~(TIM_SR_CC1IF);
-    }
-    if (status & (TIM_SR_CC2IF)) {
-        ctx->channels[1]++;
-        dev(t)->SR &= ~(TIM_SR_CC2IF);
-    }
-    if (status & (TIM_SR_CC3IF)) {
-        ctx->channels[2]++;
-        dev(t)->SR &= ~(TIM_SR_CC3IF);
-    }
-    if (status & (TIM_SR_CC4IF)) {
-        ctx->channels[3]++;
-        dev(t)->SR &= ~(TIM_SR_CC4IF);
+
+    for (unsigned bit = 0; bit < 4; ++bit)
+    {
+        uint32_t mask = 0x1UL << (bit+1);
+        if (status & mask)
+        {
+            uint32_t now = dev(t)->CCR[bit];
+            ctx->avg_period[bit] = now - isr_ctx[t].last_reading[bit];
+            isr_ctx[t].last_reading[bit] = now;
+            dev(t)->SR &= ~mask;
+        }
     }
     cortexm_isr_end();
 }

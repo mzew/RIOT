@@ -48,6 +48,8 @@ extern "C" {
 #define PLSCNT_UNDEF           (UINT_MAX)
 #endif
 
+#define TIMER_CHANNEL_NUMOF (4U)
+
 /**
  * @brief   Default PLSCNT type definition
  */
@@ -55,16 +57,8 @@ extern "C" {
 typedef unsigned int plscnt_t;
 #endif
 
-/**
- * @brief   Signature of event callback functions triggered from interrupts
- *
- * @param[in] arg       optional context for the callback
- */
-typedef void (*plscnt_cb_t)(void *arg, unsigned channel);
-
 typedef struct {
-    unsigned period;
-    unsigned channels[TIMER_CHAN];
+    unsigned avg_period[TIMER_CHANNEL_NUMOF];
 } plscnt_ctx_t;
 
 /**
@@ -73,6 +67,7 @@ typedef struct {
 #ifndef HAVE_TIMER_ISR_CTX_T
 typedef struct {
     unsigned current;
+    unsigned last_reading[TIMER_CHANNEL_NUMOF];
     plscnt_ctx_t ctx[2];
 } plscnt_isr_ctx_t;
 #endif
