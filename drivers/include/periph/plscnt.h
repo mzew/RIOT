@@ -57,6 +57,7 @@ typedef unsigned int plscnt_t;
 
 typedef struct {
     unsigned avg_period[TIMER_CHANNEL_NUMOF];
+    unsigned last_reading[TIMER_CHANNEL_NUMOF];
 } plscnt_ctx_t;
 
 /**
@@ -64,8 +65,6 @@ typedef struct {
  */
 #ifndef HAVE_TIMER_ISR_CTX_T
 typedef struct {
-    unsigned current;
-    unsigned last_reading[TIMER_CHANNEL_NUMOF];
     plscnt_ctx_t ctx[2];
 } plscnt_isr_ctx_t;
 #endif
