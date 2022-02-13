@@ -35,6 +35,11 @@
  */
 static plscnt_isr_ctx_t isr_ctx[PLSCNT_NUMOF];
 
+enum {
+    _isr = 0,
+    _app = 1,
+};
+
 static inline TIM_TypeDef *dev(plscnt_t qdec)
 {
     return plscnt_config[qdec].dev;
@@ -77,15 +82,19 @@ int32_t plscnt_init(plscnt_t t)
         switch (plscnt_config[t].chan[i].cc_chan) {
         case 0:
             dev(t)->CCMR1 |= TIM_CCMR1_CC1S_0;
+            dev(t)->CCMR1 |= TIM_CCMR1_IC1F_0 | TIM_CCMR1_IC1F_1;
             break;
         case 1:
             dev(t)->CCMR1 |= TIM_CCMR1_CC2S_0;
+            dev(t)->CCMR1 |= TIM_CCMR1_IC2F_0 | TIM_CCMR1_IC2F_1;
             break;
         case 2:
             dev(t)->CCMR2 |= TIM_CCMR2_CC3S_0;
+            dev(t)->CCMR2 |= TIM_CCMR2_IC3F_0 | TIM_CCMR2_IC3F_1;
             break;
         case 3:
             dev(t)->CCMR2 |= TIM_CCMR2_CC4S_0;
+            dev(t)->CCMR2 |= TIM_CCMR2_IC4F_0 | TIM_CCMR2_IC4F_1;
             break;
         default:
             break;
@@ -100,17 +109,19 @@ int32_t plscnt_init(plscnt_t t)
     dev(t)->DIER |= dier;
 
     dev(t)->ARR = plscnt_config[t].max;
-
+    dev(t)->PSC = 0;
     dev(t)->CNT = 0;
 
     /* Initialize the interrupt context */
     memset(&isr_ctx[t], 0, sizeof(plscnt_isr_ctx_t));
+    for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i)
+    {
+        isr_ctx[t].ctx[_isr].avg_period[i] = plscnt_config[t].max;
+        isr_ctx[t].ctx[_app].avg_period[i] = plscnt_config[t].max;
+    }
 
-    /* Enable the qdec's interrupt */
     NVIC_EnableIRQ(plscnt_config[t].irqn);
 
-//    DBGMCU->APB1FZ |= DBGMCU_APB1_FZ_DBG_TIM2_STOP;
-    /* Reset counter and start qdec */
     plscnt_start(t);
 
     return 0;
@@ -118,15 +129,29 @@ int32_t plscnt_init(plscnt_t t)
 
 plscnt_ctx_t* plscnt_read(plscnt_t t)
 {
-    unsigned next_ctx = isr_ctx[t].current ^ 0x1;
-    // clear next part of double buffer
-    memset(&isr_ctx[t].ctx[next_ctx], 0, sizeof(plscnt_ctx_t));
-
-    plscnt_ctx_t* ret = &isr_ctx[t].ctx[isr_ctx[t].current];
-
+    uint32_t now = 0;
+    plscnt_ctx_t tmp = {.avg_period = {0}, .last_reading = {0}};
     uint32_t irq_save = irq_disable();
-    isr_ctx[t].current = next_ctx;
+    {
+        now = dev(t)->CNT;
+        memcpy(&tmp, &isr_ctx[t].ctx[_isr], sizeof(tmp));
+    }
     irq_restore(irq_save);
+
+    plscnt_ctx_t* ret = &isr_ctx[t].ctx[_app];
+
+    for (unsigned i = 0; i < ARRAY_SIZE(tmp.avg_period); ++i)
+    {
+        if (ret->last_reading[i] != tmp.last_reading[i])
+        {
+            ret->avg_period[i] = tmp.avg_period[i];
+            ret->last_reading[i] = tmp.last_reading[i];
+        }
+        else if (now - tmp.last_reading[i] > tmp.avg_period[i]<<3)
+            // absense of new data within a timeframe of more than 8x of last measured period
+            // indicates that signal is not available
+            ret->avg_period[i] = plscnt_config[t].max;
+    }
 
     return ret;
 }
@@ -147,16 +172,16 @@ static inline void irq_handler(plscnt_t t)
 {
     uint32_t status = (dev(t)->SR & dev(t)->DIER);
 
-    plscnt_ctx_t* ctx = &isr_ctx[t].ctx[isr_ctx[t].current];
+    plscnt_ctx_t* ctx = &isr_ctx[t].ctx[_isr];
 
-    for (unsigned bit = 0; bit < 4; ++bit)
+    for (unsigned bit = 0; bit < TIMER_CHANNEL_NUMOF; ++bit)
     {
         uint32_t mask = 0x1UL << (bit+1);
         if (status & mask)
         {
             uint32_t now = dev(t)->CCR[bit];
-            ctx->avg_period[bit] = now - isr_ctx[t].last_reading[bit];
-            isr_ctx[t].last_reading[bit] = now;
+            ctx->avg_period[bit] = now - ctx->last_reading[bit];
+            ctx->last_reading[bit] = now;
             dev(t)->SR &= ~mask;
         }
     }
