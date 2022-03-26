@@ -239,7 +239,7 @@ int uart_init(uart_t uart, uint32_t baudrate, uart_rx_cb_t rx_cb, void *arg)
         dev(uart)->CR3 |= USART_CR3_DMAR;
         tsrb_t *rb = &((isrpipe_t*)arg)->tsrb;
         dma_configure(uart_config[uart].dma_rx, uart_config[uart].dma_rx_chan,
-                      &(dev(uart)->DR), rb->buf, rb->size, DMA_PERIPH_TO_MEM, DMA_INC_DST_ADDR | DMA_CIRCULAR);
+                      &(dev(uart)->RDR_REG), rb->buf, rb->size, DMA_PERIPH_TO_MEM, DMA_INC_DST_ADDR | DMA_CIRCULAR);
         dma_start(uart_config[uart].dma_rx);
 #else
         dev(uart)->CR1 = (USART_CR1_UE | USART_CR1_TE | RXENABLE);
