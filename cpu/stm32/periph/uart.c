@@ -530,7 +530,11 @@ static inline void irq_handler(uart_t uart)
 
 #ifdef MODULE_PERIPH_DMA
     if (status & ISR_IDLE) {
-        dev(uart)->TDR_REG; // clear IDLE flag
+#if defined(CPU_FAM_STM32F4)
+        dev(uart)->RDR_REG; // clear IDLE flag, at least on F4
+#elif defined(CPU_FAM_STM32F7)
+        dev(uart)->ICR |= USART_ICR_IDLECF_Msk;
+#endif
         // find out how far the DMA has been advanced
         unsigned raw_remain = dma_get_remaining(dma_config[uart_config[uart].dma_rx].stream);
         tsrb_t *rb = &((isrpipe_t*)isr_ctx[uart].arg)->tsrb;
