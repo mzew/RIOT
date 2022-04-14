@@ -492,25 +492,31 @@ int readline(get_char_t __get_char, char *buf, size_t size) /* needed externally
 }
 
 #ifdef SHELL_INPUT_CALLBACK
-#include "stdio_uart.h"
-static uint8_t in_buf[STDIO_UART_RX_BUFSIZE] = {0};
-static size_t buf_size = 0;
+#include "stdio_base.h"
+static uint8_t in_buf[64] = {0};
+static size_t read_size = 0;
 static size_t buf_pos = 0;
 static shell_input_callback_t in_cb = 0;
+
+#ifndef SHELL_INPUT_CALLBACK_THRESHOLD
+#define SHELL_INPUT_CALLBACK_THRESHOLD 6
+#endif
 
 void shell_set_input_callback(shell_input_callback_t cb) {
     in_cb = cb;
 }
 
 int _get_char(void) {
-    if (buf_pos < buf_size) {
+    if (buf_pos < read_size) {
         return in_buf[buf_pos++];
     }
     do {
         buf_pos = 0;
-        buf_size = stdio_read(in_buf, STDIO_UART_RX_BUFSIZE);
-    } while (in_cb && in_cb(in_buf, buf_size));
-    return (buf_pos < buf_size) ? in_buf[buf_pos++] : EOF;
+        read_size = stdio_read(in_buf, sizeof(in_buf));
+        if ((read_size > SHELL_INPUT_CALLBACK_THRESHOLD) && in_cb)
+            in_cb(in_buf, read_size);
+    } while (read_size > SHELL_INPUT_CALLBACK_THRESHOLD);
+    return (buf_pos < read_size) ? in_buf[buf_pos++] : EOF;
 }
 #endif
 
