@@ -33,12 +33,7 @@
 /**
  * @brief   Interrupt context for each configured qdec
  */
-static plscnt_isr_ctx_t isr_ctx[PLSCNT_NUMOF];
-
-enum {
-    _isr = 0,
-    _app = 1,
-};
+static plscnt_ctx_t isr_ctx[PLSCNT_NUMOF];
 
 static inline TIM_TypeDef *dev(plscnt_t qdec)
 {
@@ -47,9 +42,6 @@ static inline TIM_TypeDef *dev(plscnt_t qdec)
 
 int32_t plscnt_init(plscnt_t t)
 {
-    /* Control variables */
-    uint8_t i = 0;
-
     /* Verify parameters */
     assert((t < PLSCNT_NUMOF));
 
@@ -65,21 +57,21 @@ int32_t plscnt_init(plscnt_t t)
     dev(t)->CCMR2 = 0;
 
     /* Reset configuration and CC channels */
-    for (i = 0; i < 4; i++) {
+    for (unsigned i = 0; i < 4; i++) {
         dev(t)->CCR[i] = 0;
     }
 
     uint32_t ccer = 0;
     uint32_t dier = 0;
 
-
     /* Configure the used pins */
-    i = 0;
-    while ((i < TIMER_CHAN) && (plscnt_config[t].chan[i].pin != GPIO_UNDEF)) {
-        gpio_init(plscnt_config[t].chan[i].pin, GPIO_IN_PU);
-        gpio_init_af(plscnt_config[t].chan[i].pin, plscnt_config[t].af);
+    for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i) {
+        if (plscnt_config[t].chan[i] == GPIO_UNDEF)
+            continue;
+        gpio_init(plscnt_config[t].chan[i], GPIO_IN_PU);
+        gpio_init_af(plscnt_config[t].chan[i], plscnt_config[t].af);
         // configure cc-channels to capture rising edge
-        switch (plscnt_config[t].chan[i].cc_chan) {
+        switch (i) {
         case 0:
             dev(t)->CCMR1 |= TIM_CCMR1_CC1S_0;
             dev(t)->CCMR1 |= TIM_CCMR1_IC1F_0 | TIM_CCMR1_IC1F_1;
@@ -100,10 +92,8 @@ int32_t plscnt_init(plscnt_t t)
             break;
         }
         // enable interrupt
-        ccer |= TIM_CCER_CC1E << 4*plscnt_config[t].chan[i].cc_chan;
-        dier |= TIM_DIER_CC1IE << plscnt_config[t].chan[i].cc_chan;
-
-        i++;
+        ccer |= TIM_CCER_CC1E << 4*i;
+        dier |= TIM_DIER_CC1IE << i;
     }
     dev(t)->CCER |= ccer;
     dev(t)->DIER |= dier;
@@ -113,11 +103,10 @@ int32_t plscnt_init(plscnt_t t)
     dev(t)->CNT = 0;
 
     /* Initialize the interrupt context */
-    memset(&isr_ctx[t], 0, sizeof(plscnt_isr_ctx_t));
     for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i)
     {
-        isr_ctx[t].ctx[_isr].avg_period[i] = plscnt_config[t].max;
-        isr_ctx[t].ctx[_app].avg_period[i] = plscnt_config[t].max;
+        isr_ctx[t].avg_period[i] = plscnt_config[t].max;
+        isr_ctx[t].last_reading[i] = 0;
     }
 
     NVIC_EnableIRQ(plscnt_config[t].irqn);
@@ -127,21 +116,21 @@ int32_t plscnt_init(plscnt_t t)
     return 0;
 }
 
-plscnt_ctx_t* plscnt_read(plscnt_t t)
+void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
 {
     uint32_t now = 0;
     plscnt_ctx_t tmp = {.avg_period = {0}, .last_reading = {0}};
     uint32_t irq_save = irq_disable();
     {
         now = dev(t)->CNT;
-        memcpy(&tmp, &isr_ctx[t].ctx[_isr], sizeof(tmp));
+        memcpy(&tmp, &isr_ctx[t], sizeof(tmp));
     }
     irq_restore(irq_save);
 
-    plscnt_ctx_t* ret = &isr_ctx[t].ctx[_app];
-
     for (unsigned i = 0; i < ARRAY_SIZE(tmp.avg_period); ++i)
     {
+        if (plscnt_config[t].chan[i] == GPIO_UNDEF)
+            continue;
         if (ret->last_reading[i] != tmp.last_reading[i])
         {
             ret->avg_period[i] = tmp.avg_period[i];
@@ -152,8 +141,6 @@ plscnt_ctx_t* plscnt_read(plscnt_t t)
             // indicates that signal is not available
             ret->avg_period[i] = plscnt_config[t].max;
     }
-
-    return ret;
 }
 
 void plscnt_start(plscnt_t t)
@@ -172,7 +159,7 @@ static inline void irq_handler(plscnt_t t)
 {
     uint32_t status = (dev(t)->SR & dev(t)->DIER);
 
-    plscnt_ctx_t* ctx = &isr_ctx[t].ctx[_isr];
+    plscnt_ctx_t* ctx = &isr_ctx[t];
 
     for (unsigned bit = 0; bit < TIMER_CHANNEL_NUMOF; ++bit)
     {
