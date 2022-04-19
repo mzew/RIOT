@@ -85,7 +85,7 @@ int32_t plscnt_init(plscnt_t dev);
  *
  * @return                  the PLSCNTs current value
  */
-plscnt_ctx_t* plscnt_read(plscnt_t dev);
+void plscnt_read(plscnt_t dev, plscnt_ctx_t* pls);
 
 /**
  * @brief Start the given PLSCNT timer
