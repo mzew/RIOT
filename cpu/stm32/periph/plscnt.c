@@ -55,6 +55,7 @@ int32_t plscnt_init(plscnt_t t)
     dev(t)->CCER = 0;
     dev(t)->CCMR1 = 0;
     dev(t)->CCMR2 = 0;
+    dev(t)->PSC = 0;
 
     /* Reset configuration and CC channels */
     dev(t)->CCR1 = 0;
@@ -100,8 +101,8 @@ int32_t plscnt_init(plscnt_t t)
     dev(t)->DIER |= dier;
 
     dev(t)->ARR = plscnt_config[t].max;
-    dev(t)->PSC = 0;
     dev(t)->CNT = 0;
+    dev(t)->PSC = plscnt_config[t].divider - 1;
 
     /* Initialize the interrupt context */
     for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i)
@@ -134,10 +135,10 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             continue;
         if (ret->last_reading[i] != tmp.last_reading[i])
         {
-            ret->avg_period[i] = tmp.avg_period[i];
+            ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
             ret->last_reading[i] = tmp.last_reading[i];
         }
-        else if (now - tmp.last_reading[i] > tmp.avg_period[i]<<3)
+        else if ((plscnt_config[t].max & (now - tmp.last_reading[i])) > tmp.avg_period[i]<<2) // does not work!!!
             // absense of new data within a timeframe of more than 8x of last measured period
             // indicates that signal is not available
             ret->avg_period[i] = plscnt_config[t].max;
