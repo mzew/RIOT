@@ -181,7 +181,7 @@ static inline void irq_handler(plscnt_t t)
         if (status & mask)
         {
             uint32_t now = *((uint32_t*)(&dev(t)->CCR1) + bit);
-            ctx->avg_period[bit] = now - ctx->last_reading[bit];
+            ctx->avg_period[bit] = (now - ctx->last_reading[bit]) & plscnt_config[t].max;
             ctx->last_reading[bit] = now;
             dev(t)->SR &= ~mask;
         }
