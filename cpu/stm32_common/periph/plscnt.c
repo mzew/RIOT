@@ -35,6 +35,8 @@
  */
 static plscnt_ctx_t isr_ctx[PLSCNT_NUMOF];
 
+static unsigned msb_now[PLSCNT_NUMOF];
+
 static inline TIM_TypeDef *dev(plscnt_t qdec)
 {
     return plscnt_config[qdec].dev;
@@ -92,10 +94,17 @@ int32_t plscnt_init(plscnt_t t)
         default:
             break;
         }
+
         // enable interrupt
         ccer |= TIM_CCER_CC1E << 4*i;
         dier |= TIM_DIER_CC1IE << i;
     }
+    // enable update interrupt for 16-bit timer
+    if (plscnt_config[t].max == 0xffff)
+    {
+        dier |= TIM_DIER_UIE;
+    }
+
     dev(t)->CCER |= ccer;
     dev(t)->DIER |= dier;
 
@@ -123,7 +132,8 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
     plscnt_ctx_t tmp = {.avg_period = {0}, .last_reading = {0}};
     uint32_t irq_save = irq_disable();
     {
-        now = dev(t)->CNT;
+        now = dev(t)->CNT & plscnt_config[t].max;
+        now += msb_now[t] << 16;
         memcpy(&tmp, &isr_ctx[t], sizeof(tmp));
     }
     irq_restore(irq_save);
@@ -137,10 +147,10 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
             ret->last_reading[i] = tmp.last_reading[i];
         }
-        else if ((plscnt_config[t].max & (now - tmp.last_reading[i])) > tmp.avg_period[i]<<2) // does not work!!!
+        else if ((now - tmp.last_reading[i]) > tmp.avg_period[i]<<3)
             // absense of new data within a timeframe of more than 8x of last measured period
             // indicates that signal is not available
-            ret->avg_period[i] = plscnt_config[t].max;
+            ret->avg_period[i] = UINT_MAX;
     }
 }
 
@@ -162,13 +172,20 @@ static inline void irq_handler(plscnt_t t)
 
     plscnt_ctx_t* ctx = &isr_ctx[t];
 
+    if (status & TIM_SR_UIF) // 16-bit timer extension
+    {
+        msb_now[t]++;
+        dev(t)->SR &= ~TIM_SR_UIF;
+    }
+
     for (unsigned bit = 0; bit < TIMER_CHANNEL_NUMOF; ++bit)
     {
         uint32_t mask = 0x1UL << (bit+1);
         if (status & mask)
         {
             uint32_t now = dev(t)->CCR[bit];
-            ctx->avg_period[bit] = (now - ctx->last_reading[bit]) & plscnt_config[t].max;
+            now += msb_now[t] << 16;
+            ctx->avg_period[bit] = now - ctx->last_reading[bit];
             ctx->last_reading[bit] = now;
             dev(t)->SR &= ~mask;
         }
