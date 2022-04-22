@@ -63,6 +63,7 @@ static bool _boot_program_MCU_flash(mtd_dev_t* mtd, uint32_t hdr_addr, uint32_t 
 
 void kernel_init(void)
 {
+    gpio_set(LED_B);
     uint32_t version = 0;
     int slot = -1;
 
@@ -78,9 +79,12 @@ void kernel_init(void)
     }
 
     if (data.updatePending) {
+        gpio_clear(LED_B);
+        gpio_set(LED_G);
         _boot_program_MCU_flash(mtd0, FL_UPDATE_HEADER, FL_UPDATE);
         data.updatePending = 0;
         store_shared_data(mtd0, &data);
+        gpio_clear(LED_G);
     }
 
     for (unsigned i = 0; i < riotboot_slot_numof; i++) {
@@ -98,11 +102,14 @@ void kernel_init(void)
         }
     }
 
+    gpio_clear(LED_B);
     if (slot != -1) {
         riotboot_slot_jump(slot);
     }
 
     /* serious trouble! nothing to boot */
+
+    gpio_set(LED_R);
     while (1) {}
 }
 
