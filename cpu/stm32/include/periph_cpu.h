@@ -594,7 +594,7 @@ typedef struct {
                                      *   if not used */
     gpio_af_t af;                   /**< alternate function used */
     uint8_t bus;                    /**< APB bus */
-    uint8_t irqn;
+    uint8_t irqn[2];
     uint16_t divider;
 } plscnt_conf_t;
 

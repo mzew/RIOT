@@ -120,7 +120,9 @@ int32_t plscnt_init(plscnt_t t)
         isr_ctx[t].last_reading[i] = 0;
     }
 
-    NVIC_EnableIRQ(plscnt_config[t].irqn);
+    NVIC_EnableIRQ(plscnt_config[t].irqn[0]);
+    if (plscnt_config[t].irqn[1] != 0xff)
+        NVIC_EnableIRQ(plscnt_config[t].irqn[1]);
 
     plscnt_start(t);
 
@@ -133,9 +135,16 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
     plscnt_ctx_t tmp = {.avg_period = {0}, .last_reading = {0}};
     uint32_t irq_save = irq_disable();
     {
+        for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i)
+        {
+            if (plscnt_config[t].chan[i] != GPIO_UNDEF)
+            {
+                tmp.avg_period[i] = isr_ctx[t].avg_period[i];
+                tmp.last_reading[i] = isr_ctx[t].last_reading[i];
+            }
+        }
         now = dev(t)->CNT & plscnt_config[t].max;
         now += msb_now[t] << 16;
-        memcpy(&tmp, &isr_ctx[t], sizeof(tmp));
     }
     irq_restore(irq_save);
 
@@ -148,10 +157,12 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
             ret->last_reading[i] = tmp.last_reading[i];
         }
-        else if ((now - tmp.last_reading[i]) > tmp.avg_period[i]<<3)
+        else if (now - tmp.last_reading[i] > tmp.avg_period[i]<<3)
+        {
             // absense of new data within a timeframe of more than 8x of last measured period
             // indicates that signal is not available
             ret->avg_period[i] = UINT_MAX;
+        }
     }
 }
 
@@ -225,6 +236,41 @@ void PLSCNT_3_ISR(void)
 
 #ifdef PLSCNT_4_ISR
 void PLSCNT_4_ISR(void)
+{
+    irq_handler(4);
+}
+#endif
+
+#ifdef PLSCNT_0u_ISR
+void PLSCNT_0u_ISR(void)
+{
+    irq_handler(0);
+}
+#endif
+
+#ifdef PLSCNT_1u_ISR
+void PLSCNT_1u_ISR(void)
+{
+    irq_handler(1);
+}
+#endif
+
+#ifdef PLSCNT_2u_ISR
+void PLSCNT_2u_ISR(void)
+{
+    irq_handler(2);
+}
+#endif
+
+#ifdef PLSCNT_3u_ISR
+void PLSCNT_3u_ISR(void)
+{
+    irq_handler(3);
+}
+#endif
+
+#ifdef PLSCNT_4u_ISR
+void PLSCNT_4u_ISR(void)
 {
     irq_handler(4);
 }
