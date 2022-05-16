@@ -491,7 +491,7 @@ static size_t buf_pos = 0;
 static shell_input_callback_t in_cb = 0;
 
 #ifndef SHELL_INPUT_CALLBACK_THRESHOLD
-#define SHELL_INPUT_CALLBACK_THRESHOLD 6
+#define SHELL_INPUT_CALLBACK_THRESHOLD 1
 #endif
 
 void shell_set_input_callback(shell_input_callback_t cb) {
