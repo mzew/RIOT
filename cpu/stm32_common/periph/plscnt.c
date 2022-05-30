@@ -143,7 +143,8 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             }
         }
         now = dev(t)->CNT & plscnt_config[t].max;
-        now += msb_now[t] << 16;
+        if (plscnt_config[t].max == 0xffff)
+            now += msb_now[t] << 16;
     }
     irq_restore(irq_save);
 
