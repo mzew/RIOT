@@ -104,21 +104,6 @@ typedef struct {
 } dac_conf_t;
 
 /**
- * @brief Pulse Counter configuration
- */
-typedef struct {
-    TIM_TypeDef *dev;
-    uint32_t max;                   /**< Maximum counter value */
-    uint32_t rcc_mask;              /**< bit in clock enable register */
-    gpio_t chan[TIMER_CHANNEL_NUMOF];    /**< channel mapping, set to {GPIO_UNDEF, 0}
-                                     *   if not used */
-    gpio_af_t af;                   /**< alternate function used */
-    uint8_t bus;                    /**< APB bus */
-    uint8_t irqn[2];
-    uint16_t divider;
-} plscnt_conf_t;
-
-/**
  * @name    PTP clock configuration
  * @{
  */
