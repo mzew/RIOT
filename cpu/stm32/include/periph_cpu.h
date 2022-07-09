@@ -926,6 +926,15 @@ void gpio_init_af(gpio_t pin, gpio_af_t af);
  */
 void gpio_init_analog(gpio_t pin);
 
+/**
+ * @brief   Disable/Enable output buffer for DAC line
+ *   Buffer lowers output impedance, but adds offset around zero
+ *
+ * @param[in] line       DAC line
+ * @param[in] disable    setting
+ */
+void dac_disable_buffer(unsigned line, bool disable);
+
 #ifdef MODULE_PERIPH_DMA
 /**
  * @brief   DMA stream not defined
