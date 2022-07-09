@@ -127,6 +127,8 @@ typedef struct {
     uint8_t txfp : 1;                   /**< Transmit FIFO priority */
     uint8_t lbkm : 1;                   /**< Loopback mode */
     uint8_t silm : 1;                   /**< Silent mode */
+    unsigned bitrate;                   /**< CAN Bitrate */
+    unsigned sample_point;              /**< Sample Point */
 } can_conf_t;
 /** can_conf_t is re-defined */
 #define HAVE_CAN_CONF_T
