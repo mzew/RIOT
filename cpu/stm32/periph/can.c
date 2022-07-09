@@ -176,8 +176,10 @@ void can_init(can_t *dev, const can_conf_t *conf)
 {
     dev->candev.driver = &candev_stm32_driver;
 
-    struct can_bittiming timing = { .bitrate = CANDEV_STM32_DEFAULT_BITRATE,
-                                    .sample_point = CANDEV_STM32_DEFAULT_SPT };
+    struct can_bittiming timing = { .bitrate = conf->bitrate ?
+                    conf->bitrate : CANDEV_STM32_DEFAULT_BITRATE,
+                                    .sample_point = conf->sample_point ?
+                    conf->sample_point : CANDEV_STM32_DEFAULT_SPT};
     can_device_calc_bittiming(CLOCK_APB1, &bittiming_const, &timing);
 
     memcpy(&dev->candev.bittiming, &timing, sizeof(timing));
