@@ -148,6 +148,15 @@ typedef struct {
 } sdio_conf_t;
 
 /**
+ * @brief   Disable/Enable output buffer for DAC line
+ *   Buffer lowers output impedance, but adds offset around zero
+ *
+ * @param[in] line       DAC line
+ * @param[in] disable    setting
+ */
+void dac_disable_buffer(unsigned line, bool disable);
+
+/**
  * @name    PTP clock configuration
  * @{
  */

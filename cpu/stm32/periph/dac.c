@@ -136,3 +136,12 @@ void dac_poweroff(dac_t line)
 #endif
     }
 }
+
+void dac_disable_buffer(dac_t line, bool disable)
+{
+    unsigned mask = (dac_config[line].chan > 1) ? DAC_CR_BOFF2 : DAC_CR_BOFF1;
+    if (disable)
+        dev(line)->CR |= mask;
+    else
+        dev(line)->CR &= ~mask;
+}
