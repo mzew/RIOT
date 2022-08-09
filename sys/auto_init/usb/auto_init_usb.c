@@ -27,6 +27,7 @@
 #include <assert.h>
 
 #include "usb/usbus.h"
+#include "xtimer.h"
 
 #ifdef MODULE_USBUS_CDC_ECM
 #include "usb/usbus/cdc/ecm.h"
@@ -65,6 +66,12 @@ void auto_init_usb(void)
 #ifdef MODULE_USBUS_DFU
     usbus_dfu_init(&usbus, &dfu, USB_DFU_PROTOCOL_RUNTIME_MODE);
 #endif
+
+
+#ifndef AUTO_INIT_USBUS_DELAY
+#define AUTO_INIT_USBUS_DELAY 5000U
+#endif
+    xtimer_usleep(AUTO_INIT_USBUS_DELAY);
 
     /* Finally initialize USBUS thread */
     usbus_create(_stack, USBUS_STACKSIZE, USBUS_PRIO, USBUS_TNAME, &usbus);
