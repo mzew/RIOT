@@ -748,7 +748,11 @@ typedef struct {
 } spi_conf_t;
 
 typedef struct {
+#if defined(CPU_FAM_STM32F7)
+    SDMMC_TypeDef* dev;
+#elif defined(CPU_FAM_STM32F4)
     SDIO_TypeDef* dev;
+#endif
     gpio_t cmd_pin;
     gpio_t ck_pin;
     gpio_t d0_pin;
