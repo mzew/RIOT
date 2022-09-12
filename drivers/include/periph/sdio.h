@@ -143,7 +143,7 @@ typedef enum {
 // SDIO CMD response type
 #define SD_RESP_NONE                  ((uint32_t)0x00000000U) // No response
 #define SD_RESP_SHORT                 (SDIO_CMD_WAITRESP_0)  // Short response
-#define SD_RESP_LONG                  (SDIO_CMD_WAITRESP_1)    // Long response
+#define SD_RESP_LONG                  (SDIO_CMD_WAITRESP)    // Long response
 
 // Following commands are SD Card Specific commands.
 // SD_CMD_APP_CMD should be sent before sending these commands.
