@@ -6,6 +6,7 @@
 
 #include "periph/sdio.h"
 #include "xtimer.h"
+#include "periph_conf.h"
 
 // Mask for errors in card status value
 #define SD_OCR_ALL_ERRORS             ((uint32_t)0xFDFFE008U) // All possible error bits
@@ -29,6 +30,44 @@
 #define SD_OCR_ERASE_RESET            ((uint32_t)0x00002000U) // An erase sequence was cleared before executing
 #define SD_OCR_AKE_SEQ_ERROR          ((uint32_t)0x00000008U) // Error in the sequence of the authentication process
 
+#if defined(CPU_FAM_STM32F7)
+#define SDIO_STA_DTIMEOUT       SDMMC_STA_DTIMEOUT
+#define SDIO_STA_DCRCFAIL       SDMMC_STA_DCRCFAIL
+#define SDIO_STA_DBCKEND        SDMMC_STA_DBCKEND
+#define SDIO_STA_DATAEND        SDMMC_STA_DATAEND
+#define SDIO_STA_RXOVERR        SDMMC_STA_RXOVERR
+#define SDIO_STA_TXUNDERR       SDMMC_STA_TXUNDERR
+#define SDIO_CLKCR_CLKEN        SDMMC_CLKCR_CLKEN
+#define SDIO_CLKCR_HWFC_EN      SDMMC_CLKCR_HWFC_EN
+#define SDIO_POWER_PWRCTRL      SDMMC_POWER_PWRCTRL
+#define SDIO_STA_CTIMEOUT       SDMMC_STA_CTIMEOUT
+#define SDIO_CLKCR_WIDBUS       SDMMC_CLKCR_WIDBUS
+#define SDIO_STA_CMDSENT        SDMMC_STA_CMDSENT
+#define SDIO_CLKCR_WIDBUS_Pos   SDMMC_CLKCR_WIDBUS_Pos
+#define SDIO_CLKCR_CLKDIV       SDMMC_CLKCR_CLKDIV
+#define SDIO_CLKCR_BYPASS       SDMMC_CLKCR_BYPASS
+#define SDIO_DCTRL_DTDIR        SDMMC_DCTRL_DTDIR
+#define SDIO_DCTRL_DTEN         SDMMC_DCTRL_DTEN
+#define SDIO_STA_RXDAVL         SDMMC_STA_RXDAVL
+#define SDIO_STA_CCRCFAIL       SDMMC_STA_CCRCFAIL
+#define SDIO_STA_CMDREND        SDMMC_STA_CMDREND
+
+#define SDIO_ICR_CTIMEOUTC      SDMMC_ICR_CTIMEOUTC
+#define SDIO_ICR_CCRCFAILC      SDMMC_ICR_CCRCFAILC
+#define SDIO_ICR_DCRCFAILC      SDMMC_ICR_DCRCFAILC
+#define SDIO_ICR_DTIMEOUTC      SDMMC_ICR_DTIMEOUTC
+#define SDIO_ICR_TXUNDERRC      SDMMC_ICR_TXUNDERRC
+#define SDIO_ICR_RXOVERRC       SDMMC_ICR_RXOVERRC
+#define SDIO_ICR_CMDRENDC       SDMMC_ICR_CMDRENDC
+#define SDIO_ICR_CMDSENTC       SDMMC_ICR_CMDSENTC
+#define SDIO_ICR_DATAENDC       SDMMC_ICR_DATAENDC
+#define SDIO_ICR_DBCKENDC       SDMMC_ICR_DBCKENDC
+#define SDIO_DCTRL_DTEN         SDMMC_DCTRL_DTEN
+#define SDIO_STA_TXFIFOHE       SDMMC_STA_TXFIFOHE
+#define SDIO_STA_RXFIFOHF       SDMMC_STA_RXFIFOHF
+#define SDIO_CMD_CPSMEN         SDMMC_CMD_CPSMEN
+#endif
+
 // Bitmap to clear the SDIO static flags (command and data)
 #define SDIO_ICR_STATIC               ((uint32_t)(SDIO_ICR_CCRCFAILC | SDIO_ICR_DCRCFAILC | SDIO_ICR_CTIMEOUTC | \
                                                 SDIO_ICR_DTIMEOUTC | SDIO_ICR_TXUNDERRC | SDIO_ICR_RXOVERRC  | \
@@ -51,10 +90,35 @@
 #define SD_R6_ILLEGAL_CMD             ((uint32_t)0x00004000U)
 #define SD_R6_COM_CRC_FAILED          ((uint32_t)0x00008000U)
 
+// SDIO transfer flags
+#define SDIO_XFER_COMMON_FLAGS        (SDIO_STA_DTIMEOUT | SDIO_STA_DCRCFAIL)
+
+// SDIO flags for single block receive
+#define SDIO_RX_SB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DBCKEND | SDIO_STA_RXOVERR)
+
+// SDIO flags for multiple block receive
+#define SDIO_RX_MB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DATAEND | SDIO_STA_RXOVERR)
+
+// SDIO flags for single block transmit
+#define SDIO_TX_SB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DBCKEND | SDIO_STA_TXUNDERR)
+
+// SDIO flags for multiple block transmit
+#define SDIO_TX_MB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DATAEND | SDIO_STA_TXUNDERR)
+
+// SDIO transfer error flags
+#define SDIO_XFER_ERROR_FLAGS         (SDIO_XFER_COMMON_FLAGS | SDIO_STA_TXUNDERR | SDIO_STA_RXOVERR)
+
+#if defined(CPU_FAM_STM32F4)
 static inline SDIO_TypeDef *dev(sdio_t bus)
 {
     return sdio_config[bus].dev;
 }
+#elif defined(CPU_FAM_STM32F7)
+static inline SDMMC_TypeDef *dev(sdio_t bus)
+{
+    return sdio_config[bus].dev;
+}
+#endif
 
 static void sdio_init_pins(sdio_t bus)  {
     gpio_init(sdio_config[bus].cmd_pin, GPIO_IN_PU);

@@ -140,6 +140,11 @@ typedef enum {
 //#define SD_CLK_DIV_TRAN               (SD_CLK_DIV_16M)  // SDIO data transfer 16MHz
 #define SD_CLK_DIV_TRAN               (SD_CLK_DIV_24M) // SDIO data transfer frequency
 
+#if defined(CPU_FAM_STM32F7)
+#define SDIO_CMD_WAITRESP_0             SDMMC_CMD_WAITRESP_0
+#define SDIO_CMD_WAITRESP             SDMMC_CMD_WAITRESP
+#endif
+
 // SDIO CMD response type
 #define SD_RESP_NONE                  ((uint32_t)0x00000000U) // No response
 #define SD_RESP_SHORT                 (SDIO_CMD_WAITRESP_0)  // Short response
@@ -207,24 +212,6 @@ typedef enum {
 // SDIO timeout for data transfer ((48MHz / CLKDIV / 1000) * timeout_ms)
 #define SD_DATA_R_TIMEOUT             ((uint32_t)((48000000U / (SD_CLK_DIV_TRAN + 2U) / 1000U) * 100U)) // Data read timeout is 100ms
 #define SD_DATA_W_TIMEOUT             ((uint32_t)((48000000U / (SD_CLK_DIV_TRAN + 2U) / 1000U) * 250U)) // Date write timeout is 250ms
-
-// SDIO transfer flags
-#define SDIO_XFER_COMMON_FLAGS        (SDIO_STA_DTIMEOUT | SDIO_STA_DCRCFAIL)
-
-// SDIO flags for single block receive
-#define SDIO_RX_SB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DBCKEND | SDIO_STA_RXOVERR)
-
-// SDIO flags for multiple block receive
-#define SDIO_RX_MB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DATAEND | SDIO_STA_RXOVERR)
-
-// SDIO flags for single block transmit
-#define SDIO_TX_SB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DBCKEND | SDIO_STA_TXUNDERR)
-
-// SDIO flags for multiple block transmit
-#define SDIO_TX_MB_FLAGS              (SDIO_XFER_COMMON_FLAGS | SDIO_STA_DATAEND | SDIO_STA_TXUNDERR)
-
-// SDIO transfer error flags
-#define SDIO_XFER_ERROR_FLAGS         (SDIO_XFER_COMMON_FLAGS | SDIO_STA_TXUNDERR | SDIO_STA_RXOVERR)
 
 // stm32's SDIO peripheral related functions
 
