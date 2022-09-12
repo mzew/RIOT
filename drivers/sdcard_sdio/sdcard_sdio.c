@@ -41,16 +41,17 @@ static void _sdcard_sdio_parse(sdcard_sdio_t* card) {
             card->BlockCount  = dev_size + 1;
             card->BlockCount *= 1 << (dev_size_mul + 2);
             card->BlockSize   = 1 << (card->CSD[5] & 0x0f); // Maximum read data block length
+            card->Capacity = card->BlockCount * card->BlockSize;
         } else {
             // CSD v2.00 (SDHC, SDXC)
             dev_size  = (card->CSD[7] & 0x3f) << 16;
             dev_size |=  card->CSD[8] << 8;
             dev_size |=  card->CSD[9]; // C_SIZE
             card->BlockSize = 512;
-            card->BlockCount = dev_size + 1;
+            card->BlockCount = (dev_size + 1) * 1024; // 512 byte blocks
             // BlockCount >= 65535 means that this is SDXC card
+            card->Capacity = (dev_size + 1) / 2;
         }
-        card->Capacity = card->BlockCount * card->BlockSize;
     } else {
         // MMC
         card->MaxBusClkFreq = card->CSD[3];
