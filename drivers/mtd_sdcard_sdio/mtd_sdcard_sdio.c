@@ -31,12 +31,14 @@ static int mtd_sdcard_write(mtd_dev_t *mtd, const void *src, uint32_t addr,
                             uint32_t size);
 static int mtd_sdcard_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size);
 static int mtd_sdcard_power(mtd_dev_t *mtd, enum mtd_power_state power);
+static int mtd_sdcard_erase_sector(mtd_dev_t *dev, uint32_t sector, uint32_t count);
 
 const mtd_desc_t mtd_sdcard_sdio_driver = {
     .init = mtd_sdcard_init,
     .read = mtd_sdcard_read,
     .write = mtd_sdcard_write,
     .erase = mtd_sdcard_erase,
+    .erase_sector = mtd_sdcard_erase_sector,
     .power = mtd_sdcard_power,
 };
 
@@ -44,7 +46,7 @@ static int mtd_sdcard_init(mtd_dev_t *dev)
 {
     mtd_sdcard_sdio_t* mtd_sd = (mtd_sdcard_sdio_t*)dev;
     if((mtd_sd->init_done == true) ||
-        (sdcard_sdio_init(mtd_sd->card, SDIO_DEV(0)) == 0)) {
+        (sdcard_sdio_init(mtd_sd->card, SDIO_DEV(0)) == 0)) { // SDIO_DEV(0) ???
         dev->pages_per_sector = 1;
         dev->sector_count = mtd_sd->card->BlockCount;
         dev->page_size = mtd_sd->card->BlockSize;
@@ -59,7 +61,7 @@ static int mtd_sdcard_read(mtd_dev_t *dev, void *buff, uint32_t addr,
     mtd_sdcard_sdio_t* mtd_sd = (mtd_sdcard_sdio_t*)dev;
     int res = sdcard_sdio_read(mtd_sd->card, addr, buff, size);
     if (res == 0)
-        return size;
+        return res;
     return -EIO;
 }
 
@@ -69,7 +71,7 @@ static int mtd_sdcard_write(mtd_dev_t *dev, const void *buff, uint32_t addr,
     mtd_sdcard_sdio_t* mtd_sd = (mtd_sdcard_sdio_t*)dev;
     int res = sdcard_sdio_write(mtd_sd->card, addr, (uint32_t*)buff, size);
     if (res == 0)
-        return size;
+        return res;
     return -EIO;
 }
 
@@ -80,6 +82,21 @@ static int mtd_sdcard_erase(mtd_dev_t *dev,
     (void)dev;
     (void)addr;
     (void)size;
+
+#if MTD_SDCARD_SKIP_ERASE == 1
+    return 0;
+#else
+    return -ENOTSUP; /* explicit erase currently not supported */
+#endif
+}
+
+static int mtd_sdcard_erase_sector(mtd_dev_t *dev,
+                            uint32_t sector,
+                            uint32_t count)
+{
+    (void)dev;
+    (void)sector;
+    (void)count;
 
 #if MTD_SDCARD_SKIP_ERASE == 1
     return 0;
