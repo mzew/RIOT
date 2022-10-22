@@ -55,9 +55,9 @@ XFA_INIT_CONST(shell_command_t*, shell_commands_xfa);
 #endif /* MODULE_NEWLIB || MODULE_PICOLIBC */
 
 #ifdef MODULE_SHELL_COMMANDS
-    #define _builtin_cmds _shell_command_list
+const shell_command_t* _builtin_cmds = _shell_command_list;
 #else
-    #define _builtin_cmds NULL
+const shell_command_t* _builtin_cmds = NULL;
 #endif
 
 #define SQUOTE '\''
