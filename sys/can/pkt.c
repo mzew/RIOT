@@ -41,6 +41,8 @@ static mutex_t _mutex = MUTEX_INIT;
 static can_pkt_t _pkt_buf[CAN_PKT_BUF_SIZE];
 static memarray_t _pkt_array;
 
+pkt_stats_t pkt_stats;
+
 void can_pkt_init(void)
 {
     static_assert(sizeof(can_pkt_t) >= sizeof(can_rx_data_t), "sizeof(can_rx_data_t) must be at most sizeof(can_pkt_t)");
@@ -101,6 +103,7 @@ can_pkt_t *can_pkt_alloc_tx(int ifnum, const struct can_frame *frame, kernel_pid
     pkt->entry.type = CAN_TYPE_DEFAULT;
 #endif
 
+    pkt_stats.alloc_tx++;
     return pkt;
 }
 
@@ -114,6 +117,7 @@ can_pkt_t *can_pkt_alloc_rx(int ifnum, const struct can_frame *frame)
 
     _init_rx_pkt(pkt);
 
+    pkt_stats.alloc_rx++;
     return pkt;
 }
 
@@ -140,6 +144,11 @@ void can_pkt_free(can_pkt_t *pkt)
 
     DEBUG("can_pkt_free: free pkt=%p\n", (void*)pkt);
 
+    if (pkt->handle)
+        pkt_stats.free_tx++;
+    else
+        pkt_stats.free_rx++;
+
     mutex_lock(&_mutex);
     memarray_free(&_pkt_array, pkt);
     mutex_unlock(&_mutex);
@@ -163,6 +172,7 @@ can_rx_data_t *can_pkt_alloc_rx_data(void *data, size_t len, void *arg)
     rx->data.iov_len = len;
     rx->arg = arg;
 
+    pkt_stats.alloc_rx_data++;
     return rx;
 }
 
@@ -177,4 +187,5 @@ void can_pkt_free_rx_data(can_rx_data_t *data)
     mutex_lock(&_mutex);
     memarray_free(&_pkt_array, data);
     mutex_unlock(&_mutex);
+    pkt_stats.free_rx_data++;
 }

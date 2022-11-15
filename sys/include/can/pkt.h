@@ -33,6 +33,18 @@ extern "C" {
 #include "mbox.h"
 #endif
 
+typedef struct {
+    unsigned alloc_tx;
+    unsigned alloc_rx;
+    unsigned free_tx;
+    unsigned free_rx;
+    unsigned alloc_rx_data;
+    unsigned free_rx_data;
+    unsigned fault_tx;
+} pkt_stats_t;
+
+extern pkt_stats_t pkt_stats;
+
 /**
  * @brief A CAN packet
  *

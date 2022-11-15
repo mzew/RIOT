@@ -260,7 +260,10 @@ static void *_can_device_thread(void *args)
             pkt = (can_pkt_t *) msg.content.ptr;
             int ret = dev->driver->send(dev, &pkt->frame);
             if (ret == -EBUSY)
+            {
                 can_dll_dispatch_tx_error(pkt);
+                pkt_stats.fault_tx++;
+            }
             break;
         case CAN_MSG_SET:
             DEBUG("can device: CAN_MSG_SET received\n");
