@@ -111,6 +111,35 @@ static inline int get_channel(CAN_TypeDef *can)
 #endif
 }
 
+static unsigned can_fifo_used(can_fifo_t* fifo)
+{
+    if (fifo->tail < fifo->head)
+        return fifo->size + fifo->tail - fifo->head;
+    else
+        return fifo->tail - fifo->head;
+}
+
+static struct can_frame* can_fifo_push(can_fifo_t* fifo, struct can_frame* f)
+{
+    if (can_fifo_used(fifo) == fifo->size)
+        return 0;
+
+    fifo->frames[fifo->tail] = f;
+    fifo->tail = (fifo->tail+1) % fifo->size;
+    return f;
+}
+
+static struct can_frame* can_fifo_pull(can_fifo_t* fifo)
+{
+    struct can_frame* f = 0;
+    if (can_fifo_used(fifo))
+    {
+        f = fifo->frames[fifo->head];
+        fifo->head = (fifo->head+1) % fifo->size;
+    }
+    return f;
+}
+
 static inline can_mode_t get_mode(CAN_TypeDef *can)
 {
     if ((can->MCR & CAN_MCR_SLEEP) == CAN_MCR_SLEEP) {
@@ -272,6 +301,9 @@ static int _init(candev_t *candev)
 
     _can[get_channel(dev->conf->can)] = dev;
 
+    memset(&dev->tx_fifo, 0, sizeof(dev->tx_fifo));
+    dev->tx_fifo.size = CAN_STM32_TX_MAIL_FIFO;
+
     memset(dev->tx_mailbox, 0, sizeof(dev->tx_mailbox));
     memset(&dev->rx_fifo, 0, sizeof(dev->rx_fifo));
 
@@ -386,23 +418,10 @@ static inline void set_bit_timing(can_t *dev)
                           ((uint32_t)(dev->candev.bittiming.brp - 1) & CAN_BTR_BRP);
 }
 
-static int _send(candev_t *candev, const struct can_frame *frame)
+static int _send_to_mailbox(can_t *dev, const struct can_frame *frame, int mailbox)
 {
-    can_t *dev = (can_t *)candev;
-    CAN_TypeDef *can = dev->conf->can;
-    int mailbox = 0;
-
-    DEBUG("_send: candev=%p, frame=%p\n", (void *) candev, (void *) frame);
-
-    for (mailbox = 0; mailbox < CAN_STM32_TX_MAILBOXES; mailbox++) {
-        if (dev->tx_mailbox[mailbox] == NULL) {
-            break;
-        }
-    }
-    if (mailbox == CAN_STM32_TX_MAILBOXES) {
-        return -EBUSY;
-    }
     dev->tx_mailbox[mailbox] = frame;
+    CAN_TypeDef *can = dev->conf->can;
 
     if ((frame->can_id & CAN_EFF_FLAG) == CAN_EFF_FLAG) {
         can->sTxMailBox[mailbox].TIR = (frame->can_id & CAN_EFF_MASK) << CAN_TIxR_EFF_SHIFT
@@ -425,6 +444,27 @@ static int _send(candev_t *candev, const struct can_frame *frame)
     can->sTxMailBox[mailbox].TIR |= CAN_TI0R_TXRQ;
 
     return mailbox;
+}
+
+static int _send(candev_t *candev, const struct can_frame *frame)
+{
+    can_t *dev = (can_t *)candev;
+    int mailbox = 0;
+
+    DEBUG("_send: candev=%p, frame=%p\n", (void *) candev, (void *) frame);
+
+    for (mailbox = 0; mailbox < CAN_STM32_TX_MAILBOXES; mailbox++) {
+        if (dev->tx_mailbox[mailbox] == NULL) {
+            break;
+        }
+    }
+    if (mailbox == CAN_STM32_TX_MAILBOXES) {
+        if (can_fifo_push(&dev->tx_fifo, (void*)frame))
+            return -EAGAIN;
+        else
+            return -EBUSY;
+    }
+    return _send_to_mailbox(dev, frame, mailbox);
 }
 
 static int _abort(candev_t *candev, const struct can_frame *frame)
@@ -962,7 +1002,11 @@ static void tx_conf(can_t *dev, int mailbox)
     candev_t *candev = (candev_t *) dev;
     const struct can_frame *frame = dev->tx_mailbox[mailbox];
 
-    dev->tx_mailbox[mailbox] = NULL;
+    struct can_frame* f = can_fifo_pull(&dev->tx_fifo);
+    if (f)
+        _send_to_mailbox(dev, f, mailbox);
+    else
+        dev->tx_mailbox[mailbox] = NULL;
 
     DEBUG("_tx_conf: device=%p, mb=%d\n", (void *)dev, mailbox);
 

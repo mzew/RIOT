@@ -142,6 +142,12 @@ typedef struct {
 #define CAN_STM32_RX_MAIL_FIFO 12
 #endif
 
+#ifndef CAN_STM32_TX_MAIL_FIFO
+/** This is the maximum number of frames the driver can transmit in a row in DONT_WAIT mode simultaneously */
+#define CAN_STM32_TX_MAIL_FIFO 16
+#endif
+
+
 /** bxCAN candev descriptor */
 typedef struct can can_t;
 /** can_t is re-defined */
@@ -154,6 +160,13 @@ typedef struct candev_stm32_rx_fifo {
     int read_idx;                                   /**< Read index in the receive FIFO*/
     int is_full;                                    /**< Flag set when the FIFO is full */
 } candev_stm32_rx_fifo_t;
+
+typedef struct {
+    struct can_frame* frames[CAN_STM32_TX_MAIL_FIFO];
+    unsigned head;
+    unsigned tail;
+    unsigned size;
+} can_fifo_t;
 
 /** Internal interrupt flags */
 typedef struct candev_stm32_isr {
@@ -172,6 +185,7 @@ struct can {
     /** Tx mailboxes */
     const struct can_frame *tx_mailbox[CAN_STM32_TX_MAILBOXES];
     candev_stm32_rx_fifo_t rx_fifo;     /**< Rx FIFOs */
+    can_fifo_t  tx_fifo;
     candev_stm32_isr_t isr_flags;       /**< ISR flags */
 };
 
