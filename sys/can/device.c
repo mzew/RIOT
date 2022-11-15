@@ -258,7 +258,9 @@ static void *_can_device_thread(void *args)
             wake_up(candev_dev);
             /* read incoming pkt */
             pkt = (can_pkt_t *) msg.content.ptr;
-            dev->driver->send(dev, &pkt->frame);
+            int ret = dev->driver->send(dev, &pkt->frame);
+            if (ret == -EBUSY)
+                can_dll_dispatch_tx_error(pkt);
             break;
         case CAN_MSG_SET:
             DEBUG("can device: CAN_MSG_SET received\n");
