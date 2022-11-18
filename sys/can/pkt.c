@@ -38,8 +38,16 @@ static mutex_t _mutex = MUTEX_INIT;
 #define CAN_PKT_BUF_SIZE    128
 #endif
 
-static can_pkt_t _pkt_buf[CAN_PKT_BUF_SIZE];
-static memarray_t _pkt_array;
+#ifndef CAN_PKT_BUF_NUM
+#define CAN_PKT_BUF_NUM    2
+#endif
+
+
+static can_pkt_t _pkt_buf[CAN_PKT_BUF_NUM][CAN_PKT_BUF_SIZE];
+static memarray_t _pkt_array[CAN_PKT_BUF_NUM];
+
+static can_pkt_t _pkt_buf_data[CAN_PKT_BUF_SIZE];
+static memarray_t _pkt_array_data;
 
 pkt_stats_t pkt_stats;
 
@@ -48,7 +56,9 @@ void can_pkt_init(void)
     static_assert(sizeof(can_pkt_t) >= sizeof(can_rx_data_t), "sizeof(can_rx_data_t) must be at most sizeof(can_pkt_t)");
     mutex_lock(&_mutex);
     handle = 1;
-    memarray_init(&_pkt_array, _pkt_buf, sizeof(can_pkt_t), CAN_PKT_BUF_SIZE);
+    memarray_init(&_pkt_array_data, _pkt_buf_data, sizeof(can_pkt_t), CAN_PKT_BUF_SIZE);
+    for (unsigned i = 0; i < CAN_PKT_BUF_NUM; ++i)
+        memarray_init(&_pkt_array[i], _pkt_buf[i], sizeof(can_pkt_t), CAN_PKT_BUF_SIZE);
     mutex_unlock(&_mutex);
 }
 
@@ -57,7 +67,7 @@ static can_pkt_t *_pkt_alloc(int ifnum, const struct can_frame *frame)
     can_pkt_t *pkt;
 
     mutex_lock(&_mutex);
-    pkt = memarray_alloc(&_pkt_array);
+    pkt = memarray_alloc(&_pkt_array[ifnum]);
     mutex_unlock(&_mutex);
 
     if (!pkt) {
@@ -150,7 +160,7 @@ void can_pkt_free(can_pkt_t *pkt)
         pkt_stats.free_rx++;
 
     mutex_lock(&_mutex);
-    memarray_free(&_pkt_array, pkt);
+    memarray_free(&_pkt_array[pkt->entry.ifnum], pkt);
     mutex_unlock(&_mutex);
 }
 
@@ -159,7 +169,7 @@ can_rx_data_t *can_pkt_alloc_rx_data(void *data, size_t len, void *arg)
     can_rx_data_t *rx;
 
     mutex_lock(&_mutex);
-    rx = memarray_alloc(&_pkt_array);
+    rx = memarray_alloc(&_pkt_array_data);
     mutex_unlock(&_mutex);
 
     DEBUG("can_pkt_alloc_rx_data: rx=%p\n", (void *)rx);
@@ -185,7 +195,7 @@ void can_pkt_free_rx_data(can_rx_data_t *data)
     DEBUG("can_pkt_free_rx_data: rx=%p\n", (void *)data);
 
     mutex_lock(&_mutex);
-    memarray_free(&_pkt_array, data);
+    memarray_free(&_pkt_array_data, data);
     mutex_unlock(&_mutex);
     pkt_stats.free_rx_data++;
 }
