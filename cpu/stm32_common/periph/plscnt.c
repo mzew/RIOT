@@ -157,11 +157,12 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
             ret->last_reading[i] = tmp.last_reading[i];
         }
-        else if (now - tmp.last_reading[i] > tmp.avg_period[i]<<3)
+        else if (now - tmp.last_reading[i] > ret->avg_period[i]<<3) // use scaled with divider avg_period here
         {
             // absense of new data within a timeframe of more than 8x of last measured period
             // indicates that signal is not available
             ret->avg_period[i] = UINT_MAX;
+            ret->last_reading[i] = tmp.last_reading[i];
         }
     }
 }
