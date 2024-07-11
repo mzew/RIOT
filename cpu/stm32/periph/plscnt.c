@@ -98,6 +98,7 @@ int32_t plscnt_init(plscnt_t t)
 
         // enable interrupt
         ccer |= TIM_CCER_CC1E << 4*i;
+        ccer |= TIM_CCER_CC1P << 4*i;
         dier |= TIM_DIER_CC1IE << i;
     }
     // enable update interrupt for 16-bit timer
