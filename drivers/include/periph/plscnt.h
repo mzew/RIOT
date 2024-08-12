@@ -105,6 +105,33 @@ void plscnt_start(plscnt_t dev);
  */
 void plscnt_stop(plscnt_t dev);
 
+#ifdef PLSCNT_SNR
+typedef struct {
+    unsigned avg_period;
+    unsigned last_reading;
+} plscnt_debug_ctx_t;
+
+enum {
+    loop_size = 256,
+    snr_nodev = 0xffff,
+};
+
+/**
+ * @brief Controls SNR sampling for given channel and PLSCNT timer
+ * @param[in] dev           the PLSCNT device to sample SNR from
+ * @param[in] channel       sample from this channel, only one channel at a time
+ * @param[in] en            enable / disable
+ */
+void plscnt_snr_sample_enable(plscnt_t dev, unsigned channel, bool en);
+
+/**
+ * @brief Acquires measured SNR value
+ * device and channel number shall be pre-configured with function above
+ * @return measured SNR from 'loop_size' samples
+ */
+float plscnt_snr_sample(void);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

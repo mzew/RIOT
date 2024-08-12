@@ -179,6 +179,53 @@ void plscnt_stop(plscnt_t t)
     dev(t)->CR1 &= ~TIM_CR1_CEN;
 }
 
+#ifdef PLSCNT_SNR
+
+#include <math.h>
+
+plscnt_debug_ctx_t isr_loop[loop_size] = {0};
+static unsigned loop_idx = 0;
+
+static plscnt_t snr_dev = snr_nodev;
+static unsigned snr_ch;
+
+void plscnt_snr_sample_enable(plscnt_t dev, unsigned channel, bool en)
+{
+    uint32_t irq_save = irq_disable();
+
+    if (en)
+    {
+        snr_dev = dev;
+        snr_ch = channel;
+    }
+    else
+        snr_dev = snr_nodev;
+
+    irq_restore(irq_save);
+
+}
+
+float plscnt_snr_sample(void)
+{
+    // mean
+    float mean = 0.0f;
+    for (unsigned i = 0; i < loop_size; ++i)
+        mean += isr_loop[i].avg_period;
+    mean /= loop_size;
+
+    // std-deviation
+    float std_dev = 0.0f;
+    for (unsigned i = 0; i < loop_size; ++i)
+        std_dev += (isr_loop[i].avg_period - mean)*(isr_loop[i].avg_period - mean);
+
+    std_dev = sqrtf(std_dev / loop_size);
+
+    float snr = mean / std_dev;
+
+    return snr;
+}
+#endif
+
 static inline void irq_handler(plscnt_t t)
 {
     uint32_t status = (dev(t)->SR & dev(t)->DIER);
@@ -201,6 +248,16 @@ static inline void irq_handler(plscnt_t t)
             ctx->avg_period[bit] = now - ctx->last_reading[bit];
             ctx->last_reading[bit] = now;
             dev(t)->SR &= ~mask;
+
+#ifdef PLSCNT_SNR
+            if (t == snr_dev && bit == snr_ch)
+            {
+                loop_idx = (loop_idx + 1) % loop_size;
+                plscnt_debug_ctx_t* ctx2 = &isr_loop[loop_idx];
+                ctx2->avg_period = ctx->avg_period[bit];
+                ctx2->last_reading = ctx->last_reading[bit];
+            }
+#endif
         }
     }
     cortexm_isr_end();
