@@ -78,19 +78,19 @@ int32_t plscnt_init(plscnt_t t)
         switch (i) {
         case 0:
             dev(t)->CCMR1 |= TIM_CCMR1_CC1S_0;
-            dev(t)->CCMR1 |= TIM_CCMR1_IC1F_0 | TIM_CCMR1_IC1F_1;
+            dev(t)->CCMR1 |= TIM_CCMR1_IC1F_0 | TIM_CCMR1_IC1F_1 | TIM_CCMR1_IC1F_2 | TIM_CCMR1_IC1F_3;
             break;
         case 1:
             dev(t)->CCMR1 |= TIM_CCMR1_CC2S_0;
-            dev(t)->CCMR1 |= TIM_CCMR1_IC2F_0 | TIM_CCMR1_IC2F_1;
+            dev(t)->CCMR1 |= TIM_CCMR1_IC2F_0 | TIM_CCMR1_IC2F_1 | TIM_CCMR1_IC2F_2 | TIM_CCMR1_IC2F_3;
             break;
         case 2:
             dev(t)->CCMR2 |= TIM_CCMR2_CC3S_0;
-            dev(t)->CCMR2 |= TIM_CCMR2_IC3F_0 | TIM_CCMR2_IC3F_1;
+            dev(t)->CCMR2 |= TIM_CCMR2_IC3F_0 | TIM_CCMR2_IC3F_1 | TIM_CCMR2_IC3F_2 | TIM_CCMR2_IC3F_3;
             break;
         case 3:
             dev(t)->CCMR2 |= TIM_CCMR2_CC4S_0;
-            dev(t)->CCMR2 |= TIM_CCMR2_IC4F_0 | TIM_CCMR2_IC4F_1;
+            dev(t)->CCMR2 |= TIM_CCMR2_IC4F_0 | TIM_CCMR2_IC4F_1 | TIM_CCMR2_IC4F_2 | TIM_CCMR2_IC4F_3;
             break;
         default:
             break;
