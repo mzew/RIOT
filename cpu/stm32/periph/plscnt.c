@@ -135,14 +135,7 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
     plscnt_ctx_t tmp = {.avg_period = {0}, .last_reading = {0}};
     uint32_t irq_save = irq_disable();
     {
-        for (unsigned i = 0; i < TIMER_CHANNEL_NUMOF; ++i)
-        {
-            if (plscnt_config[t].chan[i] != GPIO_UNDEF)
-            {
-                tmp.avg_period[i] = isr_ctx[t].avg_period[i];
-                tmp.last_reading[i] = isr_ctx[t].last_reading[i];
-            }
-        }
+        memcpy(&tmp, &isr_ctx[t], sizeof(plscnt_ctx_t));
         now = dev(t)->CNT & plscnt_config[t].max;
         now += msb_now[t] << 16;
     }
@@ -154,16 +147,17 @@ void plscnt_read(plscnt_t t, plscnt_ctx_t* ret)
             continue;
         if (ret->last_reading[i] != tmp.last_reading[i])
         {
-            ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
-            ret->last_reading[i] = tmp.last_reading[i];
+            if (tmp.period_valid & (1 << i)) // only if period is valid
+                ret->avg_period[i] = tmp.avg_period[i] * plscnt_config[t].divider;
+
         }
         else if (now - tmp.last_reading[i] > ret->avg_period[i]<<3) // use scaled with divider avg_period here
         {
             // absense of new data within a timeframe of more than 8x of last measured period
             // indicates that signal is not available
             ret->avg_period[i] = UINT_MAX;
-            ret->last_reading[i] = tmp.last_reading[i];
         }
+        ret->last_reading[i] = tmp.last_reading[i];
     }
 }
 
@@ -228,38 +222,59 @@ float plscnt_snr_sample(void)
 
 static inline void irq_handler(plscnt_t t)
 {
-    uint32_t status = (dev(t)->SR & dev(t)->DIER);
+    uint32_t status = dev(t)->SR;
 
     plscnt_ctx_t* ctx = &isr_ctx[t];
 
     if (status & TIM_SR_UIF) // 16-bit timer extension
     {
         msb_now[t]++;
-        dev(t)->SR &= ~TIM_SR_UIF;
+        status &= ~TIM_SR_UIF;
     }
 
-    for (unsigned bit = 0; bit < TIMER_CHANNEL_NUMOF; ++bit)
+    if (status)
     {
-        uint32_t mask = 0x1UL << (bit+1);
-        if (status & mask)
+        for (unsigned bit = 0; bit < TIMER_CHANNEL_NUMOF; ++bit)
         {
-            uint32_t now = *((uint32_t*)(&dev(t)->CCR1) + bit) & plscnt_config[t].max;
-            now += msb_now[t] << 16;
-            ctx->avg_period[bit] = now - ctx->last_reading[bit];
-            ctx->last_reading[bit] = now;
-            dev(t)->SR &= ~mask;
+            if (plscnt_config[t].chan[bit] == GPIO_UNDEF)
+                continue;
 
-#ifdef PLSCNT_SNR
-            if (t == snr_dev && bit == snr_ch)
+            uint32_t mask = 0x1UL << (bit+1);
+            if (status & mask)
             {
-                loop_idx = (loop_idx + 1) % loop_size;
-                plscnt_debug_ctx_t* ctx2 = &isr_loop[loop_idx];
-                ctx2->avg_period = ctx->avg_period[bit];
-                ctx2->last_reading = ctx->last_reading[bit];
+                uint32_t now = *((uint32_t*)(&dev(t)->CCR1) + bit) & plscnt_config[t].max;
+                now += msb_now[t] << 16;
+
+                // if overcapture happened, period is not valid!
+                uint32_t overcap_mask = 1UL << (bit+9);
+                if ((status & overcap_mask) == 0)
+                {
+                    ctx->avg_period[bit] = now - ctx->last_reading[bit];
+                    ctx->period_valid |= (1UL << bit);
+                }
+                else
+                {
+                    ctx->period_valid &= ~(1UL << bit);
+                    status &= ~overcap_mask;
+                }
+
+                ctx->last_reading[bit] = now;
+
+                status &= ~mask;
+
+    #ifdef PLSCNT_SNR
+                if (t == snr_dev && bit == snr_ch)
+                {
+                    loop_idx = (loop_idx + 1) % loop_size;
+                    plscnt_debug_ctx_t* ctx2 = &isr_loop[loop_idx];
+                    ctx2->avg_period = ctx->avg_period[bit];
+                    ctx2->last_reading = ctx->last_reading[bit];
+                }
+    #endif
             }
-#endif
         }
     }
+    dev(t)->SR = 0;
     cortexm_isr_end();
 }
 
