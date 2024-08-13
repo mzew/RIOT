@@ -56,6 +56,7 @@ typedef unsigned int plscnt_t;
 #endif
 
 typedef struct {
+    unsigned period_valid;
     unsigned avg_period[TIMER_CHANNEL_NUMOF];
     unsigned last_reading[TIMER_CHANNEL_NUMOF];
 } plscnt_ctx_t;
