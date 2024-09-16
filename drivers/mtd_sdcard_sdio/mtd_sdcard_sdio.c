@@ -27,7 +27,7 @@
 static int mtd_sdcard_init(mtd_dev_t *mtd);
 static int mtd_sdcard_read(mtd_dev_t *mtd, void *dest, uint32_t addr,
                            uint32_t size);
-static int mtd_sdcard_write(mtd_dev_t *mtd, const void *src, uint32_t addr,
+static int mtd_sdcard_write_page(mtd_dev_t *mtd, const void *src, uint32_t page, uint32_t offset,
                             uint32_t size);
 static int mtd_sdcard_erase(mtd_dev_t *mtd, uint32_t addr, uint32_t size);
 static int mtd_sdcard_power(mtd_dev_t *mtd, enum mtd_power_state power);
@@ -36,7 +36,7 @@ static int mtd_sdcard_erase_sector(mtd_dev_t *dev, uint32_t sector, uint32_t cou
 const mtd_desc_t mtd_sdcard_sdio_driver = {
     .init = mtd_sdcard_init,
     .read = mtd_sdcard_read,
-    .write = mtd_sdcard_write,
+    .write_page = mtd_sdcard_write_page,
     .erase = mtd_sdcard_erase,
     .erase_sector = mtd_sdcard_erase_sector,
     .power = mtd_sdcard_power,
@@ -50,6 +50,7 @@ static int mtd_sdcard_init(mtd_dev_t *dev)
         dev->pages_per_sector = 1;
         dev->sector_count = mtd_sd->card->BlockCount;
         dev->page_size = mtd_sd->card->BlockSize;
+        dev->write_size = mtd_sd->card->BlockSize;
         return 0;
     }
     return -EIO;
@@ -74,6 +75,13 @@ static int mtd_sdcard_write(mtd_dev_t *dev, const void *buff, uint32_t addr,
         return res;
     return -EIO;
 }
+
+static int mtd_sdcard_write_page(mtd_dev_t *dev, const void *buff, uint32_t page, uint32_t offset,
+                            uint32_t size)
+{
+    return mtd_sdcard_write(dev, buff, page * dev->page_size + offset, size) ? 0 : size;
+}
+
 
 static int mtd_sdcard_erase(mtd_dev_t *dev,
                             uint32_t addr,
