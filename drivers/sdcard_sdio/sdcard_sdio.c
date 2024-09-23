@@ -115,7 +115,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
 
     // Send ALL_SEND_CID command
     sdio_cmd(dev->bus, SD_CMD_ALL_SEND_CID, 0, SD_RESP_LONG); // CMD2
-    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)dev->CID); // response is a value of the CID/CSD register
+    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)(uintptr_t)dev->CID); // response is a value of the CID/CSD register
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
@@ -144,7 +144,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
 
     // Send SEND_CSD command to retrieve CSD register from the card
     sdio_cmd(dev->bus, SD_CMD_SEND_CSD, dev->RCA << 16, SD_RESP_LONG); // CMD9
-    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)dev->CSD);
+    cmd_res = sdio_wait_R2(dev->bus, (uint32_t *)(uintptr_t)dev->CSD);
     if (cmd_res != SDR_Success) {
         return cmd_res;
     }
@@ -180,7 +180,7 @@ int sdcard_sdio_init(sdcard_sdio_t *dev, sdio_t bus)
     if (dev->Type != SDCT_MMC) {
         // MMC card doesn't support this feature
         // Warning: this function set block size to 8 bytes
-        sdio_getSCR(dev->bus, dev->RCA, (uint32_t *)dev->SCR); // SCR tells if the card is 4bit capable
+        sdio_getSCR(dev->bus, dev->RCA, (uint32_t *)(uintptr_t)dev->SCR); // SCR tells if the card is 4bit capable
     }
 
     if (dev->SCR[1] & 0x05)
